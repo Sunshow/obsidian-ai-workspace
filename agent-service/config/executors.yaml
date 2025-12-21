@@ -1,0 +1,13 @@
+executors:
+  - name: claude-executor
+    type: claude
+    endpoint: http://claude-executor:3002
+    healthPath: /health
+    enabled: true
+    description: Claude Code CLI Executor
+  - name: puppeteer-executor
+    type: puppeteer
+    endpoint: http://puppeteer-executor:3003
+    healthPath: /health
+    enabled: true
+    description: Puppeteer Web Scraping Executor
