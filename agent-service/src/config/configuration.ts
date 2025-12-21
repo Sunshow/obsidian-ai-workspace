@@ -9,6 +9,7 @@ export interface ExecutorConfig {
   healthPath: string;
   enabled: boolean;
   description?: string;
+  typeConfig?: Record<string, any>;
 }
 
 export default () => {

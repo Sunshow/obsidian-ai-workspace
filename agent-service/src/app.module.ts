@@ -4,6 +4,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { ScheduleModule } from '@nestjs/schedule';
 import { join } from 'path';
 import { AppConfigModule } from './config/config.module';
+import { ExecutorTypesModule } from './executor-types/executor-types.module';
 import { ExecutorsModule } from './executors/executors.module';
 import { HealthController } from './health/health.controller';
 import configuration from './config/configuration';
@@ -20,6 +21,7 @@ import configuration from './config/configuration';
       exclude: ['/api*', '/health*'],
     }),
     AppConfigModule,
+    ExecutorTypesModule,
     ExecutorsModule,
   ],
   controllers: [HealthController],

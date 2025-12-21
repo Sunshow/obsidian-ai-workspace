@@ -8,4 +8,5 @@ export interface Executor {
   status: 'healthy' | 'unhealthy' | 'unknown';
   lastChecked?: Date;
   responseTime?: number;
+  typeConfig?: Record<string, any>;
 }

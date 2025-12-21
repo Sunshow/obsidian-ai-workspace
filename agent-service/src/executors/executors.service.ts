@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Interval } from '@nestjs/schedule';
 import { writeFileSync } from 'fs';
@@ -8,6 +8,8 @@ import { Executor } from './interfaces/executor.interface';
 import { CreateExecutorDto } from './dto/create-executor.dto';
 import { UpdateExecutorDto } from './dto/update-executor.dto';
 import { ExecutorConfig } from '../config/configuration';
+import { ExecutorTypesService } from '../executor-types/executor-types.service';
+import { InvokeResult } from '../executor-types/interfaces/executor-type.interface';
 
 @Injectable()
 export class ExecutorsService {
@@ -15,7 +17,10 @@ export class ExecutorsService {
   private executors: Map<string, Executor> = new Map();
   private readonly healthCheckInterval: number;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private executorTypesService: ExecutorTypesService,
+  ) {
     this.loadFromConfig();
     this.healthCheckInterval = parseInt(
       process.env.HEALTH_CHECK_INTERVAL || '30000',
@@ -36,13 +41,14 @@ export class ExecutorsService {
   private saveToConfig() {
     const configPath = join(process.cwd(), 'config', 'executors.yaml');
     const executorsList = Array.from(this.executors.values()).map(
-      ({ name, type, endpoint, healthPath, enabled, description }) => ({
+      ({ name, type, endpoint, healthPath, enabled, description, typeConfig }) => ({
         name,
         type,
         endpoint,
         healthPath,
         enabled,
         description,
+        typeConfig,
       }),
     );
     const yamlContent = yaml.dump({ executors: executorsList });
@@ -66,6 +72,10 @@ export class ExecutorsService {
       throw new ConflictException(`Executor ${dto.name} already exists`);
     }
 
+    if (!this.executorTypesService.hasType(dto.type)) {
+      throw new BadRequestException(`Unknown executor type: ${dto.type}`);
+    }
+
     const executor: Executor = {
       name: dto.name,
       type: dto.type,
@@ -73,6 +83,7 @@ export class ExecutorsService {
       healthPath: dto.healthPath || '/health',
       enabled: dto.enabled ?? true,
       description: dto.description,
+      typeConfig: dto.typeConfig,
       status: 'unknown',
     };
 
@@ -120,27 +131,55 @@ export class ExecutorsService {
       return executor;
     }
 
-    const startTime = Date.now();
-    try {
-      const url = `${executor.endpoint}${executor.healthPath}`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+    const handler = this.executorTypesService.getHandler(executor.type);
+    if (handler) {
+      const result = await handler.checkHealth(executor);
+      executor.responseTime = result.responseTime;
+      executor.status = result.healthy ? 'healthy' : 'unhealthy';
+    } else {
+      const startTime = Date.now();
+      try {
+        const url = `${executor.endpoint}${executor.healthPath}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(url, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+        const response = await fetch(url, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
 
-      executor.responseTime = Date.now() - startTime;
-      executor.status = response.ok ? 'healthy' : 'unhealthy';
-    } catch {
-      executor.responseTime = Date.now() - startTime;
-      executor.status = 'unhealthy';
+        executor.responseTime = Date.now() - startTime;
+        executor.status = response.ok ? 'healthy' : 'unhealthy';
+      } catch {
+        executor.responseTime = Date.now() - startTime;
+        executor.status = 'unhealthy';
+      }
     }
 
     executor.lastChecked = new Date();
     this.executors.set(name, executor);
     return executor;
+  }
+
+  async invoke(name: string, action: string, params: any): Promise<InvokeResult> {
+    const executor = await this.findOne(name);
+
+    if (!executor.enabled) {
+      return {
+        success: false,
+        error: `Executor ${name} is disabled`,
+      };
+    }
+
+    const handler = this.executorTypesService.getHandler(executor.type);
+    if (!handler) {
+      return {
+        success: false,
+        error: `No handler found for executor type: ${executor.type}`,
+      };
+    }
+
+    return handler.invoke(executor, action, params);
   }
 
   async checkAllHealth(): Promise<Executor[]> {

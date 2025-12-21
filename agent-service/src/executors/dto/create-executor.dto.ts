@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsOptional, IsUrl } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsObject } from 'class-validator';
 
 export class CreateExecutorDto {
   @IsString()
@@ -21,4 +21,8 @@ export class CreateExecutorDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsObject()
+  @IsOptional()
+  typeConfig?: Record<string, any>;
 }

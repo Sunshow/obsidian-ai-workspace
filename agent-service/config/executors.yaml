@@ -1,13 +1,17 @@
 executors:
-  - name: claude-executor
-    type: claude
+  - name: claudecode-1
+    type: claudecode
     endpoint: http://claude-executor:3002
     healthPath: /health
     enabled: true
     description: Claude Code CLI Executor
-  - name: puppeteer-executor
+    typeConfig:
+      model: claude-sonnet-4-5-20250929
+  - name: puppeteer-1
     type: puppeteer
     endpoint: http://puppeteer-executor:3003
     healthPath: /health
     enabled: true
     description: Puppeteer Web Scraping Executor
+    typeConfig:
+      timeout: 30000

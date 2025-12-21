@@ -10,10 +10,15 @@ import {
 import { ExecutorsService } from './executors.service';
 import { CreateExecutorDto } from './dto/create-executor.dto';
 import { UpdateExecutorDto } from './dto/update-executor.dto';
+import { InvokeExecutorDto } from './dto/invoke-executor.dto';
+import { ExecutorTypesService } from '../executor-types/executor-types.service';
 
 @Controller('api/executors')
 export class ExecutorsController {
-  constructor(private readonly executorsService: ExecutorsService) {}
+  constructor(
+    private readonly executorsService: ExecutorsService,
+    private readonly executorTypesService: ExecutorTypesService,
+  ) {}
 
   @Get()
   async findAll() {
@@ -49,6 +54,11 @@ export class ExecutorsController {
   @Post(':name/toggle')
   async toggle(@Param('name') name: string) {
     return this.executorsService.toggle(name);
+  }
+
+  @Post(':name/invoke')
+  async invoke(@Param('name') name: string, @Body() dto: InvokeExecutorDto) {
+    return this.executorsService.invoke(name, dto.action, dto.params || {});
   }
 
   @Post('check-all')
