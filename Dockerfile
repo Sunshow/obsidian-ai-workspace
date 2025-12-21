@@ -22,12 +22,19 @@ RUN node --version && npm --version
 # 安装 Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code
 
-# 复制并构建 Agent Service
-COPY agent-service /app/agent-service
+# === 稳定依赖层 (很少变动,利用 Docker 缓存) ===
 WORKDIR /app/agent-service
+COPY agent-service/package*.json ./
 ENV PUPPETEER_CACHE_DIR=/opt/puppeteer-cache
-RUN npm install && npm run build && \
-    npx puppeteer browsers install chrome
+
+# 安装依赖和 Puppeteer 浏览器 (这层很少变动,会被缓存)
+RUN npm install && npx puppeteer browsers install chrome
+
+# === 频繁变动层 (放最后) ===
+# 复制源代码并构建
+COPY agent-service/src ./src
+COPY agent-service/tsconfig.json ./
+RUN npm run build
 
 # 复制 s6 服务配置
 COPY root/ /

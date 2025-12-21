@@ -45,27 +45,17 @@ router.post('/', async (req: Request, res: Response) => {
         ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL
       });
 
-      // 调用 Claude Code CLI - 关键：stdin 用 inherit
-      const proc = spawn('claude', ['-p', userMessage], {
+      // 使用 --output-format stream-json 获取 JSON 格式输出
+      const proc = spawn('claude', ['-p', userMessage, '--output-format', 'stream-json', '--verbose'], {
         cwd: '/vaults',
         stdio: ['inherit', 'pipe', 'pipe'],
         env: env as NodeJS.ProcessEnv
       });
 
+      let fullOutput = '';
+
       proc.stdout?.on('data', (chunk: Buffer) => {
-        const content = chunk.toString();
-        const data = {
-          id: `chatcmpl-${Date.now()}`,
-          object: 'chat.completion.chunk',
-          created: Math.floor(Date.now() / 1000),
-          model: 'claude-code',
-          choices: [{
-            index: 0,
-            delta: { content },
-            finish_reason: null
-          }]
-        };
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
+        fullOutput += chunk.toString();
       });
 
       proc.stderr?.on('data', (chunk: Buffer) => {
@@ -76,6 +66,42 @@ router.post('/', async (req: Request, res: Response) => {
         if (code !== 0) {
           console.error(`Claude Code exited with code ${code}`);
         }
+
+        // 解析 JSON 结果并发送
+        try {
+          const event = JSON.parse(fullOutput.trim());
+          if (event.type === 'result' && event.result) {
+            const data = {
+              id: `chatcmpl-${Date.now()}`,
+              object: 'chat.completion.chunk',
+              created: Math.floor(Date.now() / 1000),
+              model: 'claude-code',
+              choices: [{
+                index: 0,
+                delta: { content: event.result },
+                finish_reason: null
+              }]
+            };
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+          }
+        } catch (e) {
+          // 非 JSON 输出直接发送
+          if (fullOutput.trim()) {
+            const data = {
+              id: `chatcmpl-${Date.now()}`,
+              object: 'chat.completion.chunk',
+              created: Math.floor(Date.now() / 1000),
+              model: 'claude-code',
+              choices: [{
+                index: 0,
+                delta: { content: fullOutput },
+                finish_reason: null
+              }]
+            };
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+          }
+        }
+
         res.write('data: [DONE]\n\n');
         res.end();
       });
