@@ -1,0 +1,24 @@
+# 依赖和构建产物
+node_modules/
+dist/
+*.log
+
+# 本地配置
+.env
+.env.local
+
+# 运行时数据（不要提交到仓库）
+vaults/
+config/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Docker
+*.tar
