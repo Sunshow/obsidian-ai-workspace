@@ -3,7 +3,9 @@ import { Layout } from './components/Layout';
 import DashboardPage from './pages/DashboardPage';
 import ExecutorsPage from './pages/ExecutorsPage';
 import ObsidianPage from './pages/ObsidianPage';
-import AIPage from './pages/AIPage';
+import SkillsPage from './pages/SkillsPage';
+import SkillsListPage from './pages/SkillsListPage';
+import SkillEditorPage from './pages/SkillEditorPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
@@ -14,7 +16,10 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="executors" element={<ExecutorsPage />} />
           <Route path="obsidian" element={<ObsidianPage />} />
-          <Route path="ai" element={<AIPage />} />
+          <Route path="skills" element={<SkillsListPage />} />
+          <Route path="skills/new" element={<SkillEditorPage />} />
+          <Route path="skills/:skillId/edit" element={<SkillEditorPage />} />
+          <Route path="skills/:skillId" element={<SkillsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

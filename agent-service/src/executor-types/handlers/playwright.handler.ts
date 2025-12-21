@@ -1,6 +1,8 @@
 import { chromium, Browser, Page } from 'playwright-core';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { Executor } from '../../executors/interfaces/executor.interface';
 import { InvokeResult, ConfigSchemaField, HealthResult } from '../interfaces/executor-type.interface';
 import { BaseExecutorHandler } from './base.handler';
@@ -194,11 +196,17 @@ export class PlaywrightHandler extends BaseExecutorHandler {
 
   private async handleScreenshot(
     page: Page,
-    params: { url: string; fullPage?: boolean; waitUntil?: string },
+    params: {
+      url: string;
+      fullPage?: boolean;
+      waitUntil?: string;
+      savePath?: string;
+      fileName?: string;
+    },
     timeout: number,
     typeConfig: Record<string, any> = {},
   ): Promise<InvokeResult> {
-    const { url, fullPage = false } = params;
+    const { url, fullPage = false, savePath, fileName } = params;
     const waitUntil = (params.waitUntil || typeConfig.waitUntil || 'domcontentloaded') as 'domcontentloaded' | 'load' | 'networkidle';
 
     if (!url) {
@@ -212,6 +220,34 @@ export class PlaywrightHandler extends BaseExecutorHandler {
       type: 'png',
     });
 
+    // If savePath is provided, save to file
+    if (savePath) {
+      const actualFileName = fileName || `screenshot-${Date.now()}.png`;
+      const fullPath = join(savePath, actualFileName);
+
+      try {
+        mkdirSync(savePath, { recursive: true });
+        writeFileSync(fullPath, screenshot);
+
+        return {
+          success: true,
+          data: {
+            success: true,
+            url,
+            filePath: fullPath,
+            fileName: actualFileName,
+            timestamp: new Date().toISOString(),
+          },
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: `Failed to save screenshot: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        };
+      }
+    }
+
+    // Default: return base64
     return {
       success: true,
       data: {

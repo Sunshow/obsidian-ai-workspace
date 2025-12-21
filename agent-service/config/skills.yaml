@@ -22,3 +22,75 @@ smartFetch:
   executors:
     playwright: playwright-1
     claudecode: claudecode-1
+
+skills:
+  - id: screenshot-note
+    name: 截图笔记
+    description: 抓取网页截图并生成图文混排的 Markdown 笔记
+    enabled: true
+    builtinVariables:
+      currentDate: true
+      randomId: true
+    userInputs:
+      - name: url
+        label: 网页地址
+        type: text
+        placeholder: https://example.com
+        required: true
+      - name: notePath
+        label: 笔记保存路径
+        type: text
+        defaultValue: WebClips
+        required: false
+      - name: attachmentPath
+        label: 附件存储路径
+        type: text
+        defaultValue: WebClips/attachments
+        required: false
+    steps:
+      - id: fetch
+        name: 抓取网页内容
+        executorType: playwright
+        action: fetch
+        params:
+          url: "{{url}}"
+        outputVariable: fetchResult
+      - id: screenshot
+        name: 截取并保存网页截图
+        executorType: playwright
+        action: screenshot
+        params:
+          url: "{{url}}"
+          fullPage: true
+          savePath: "/vaults/{{attachmentPath}}"
+          fileName: "{{randomId}}.png"
+        outputVariable: screenshotResult
+      - id: generate
+        name: 生成图文混排笔记
+        executorType: claudecode
+        action: chat
+        params:
+          messages:
+            - role: user
+              content: |
+                请根据以下网页信息生成一份图文混排的 Markdown 笔记。
+
+                ## 网页信息
+                - 标题: {{fetchResult.data.title}}
+                - 链接: {{url}}
+                - 截图文件: {{screenshotResult.data.fileName}}
+                - 日期: {{currentDate}}
+
+                ## 网页内容
+                {{fetchResult.data.textContent}}
+
+                ## 生成要求
+                1. 创建结构化的 Markdown 笔记
+                2. 在笔记开头嵌入网页截图，使用以下格式：
+                   ![网页截图]({{attachmentPath}}/{{randomId}}.png)
+                3. 提取并整理关键信息和要点
+                4. 使用二级标题开始（文件名会作为一级标题）
+                5. 在末尾添加来源链接
+                6. 将笔记保存到 /vaults/{{notePath}}/ 目录
+                7. 文件名使用生成的笔记标题（去除特殊字符）.md
+        outputVariable: noteResult

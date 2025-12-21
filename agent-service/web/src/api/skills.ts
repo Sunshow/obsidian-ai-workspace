@@ -3,6 +3,8 @@ export interface Skill {
   name: string;
   description: string;
   endpoint: string;
+  builtin?: boolean;
+  enabled?: boolean;
 }
 
 export interface SmartFetchConfig {
@@ -30,6 +32,93 @@ export interface SmartFetchResult {
   noteSavePath?: string;
   error?: string;
   warning?: string;
+}
+
+// Skill Definition Types
+export interface BuiltinVariables {
+  currentDate?: boolean;
+  currentTime?: boolean;
+  currentDatetime?: boolean;
+  randomId?: boolean;
+  [key: string]: boolean | undefined;
+}
+
+export interface UserInputOption {
+  label: string;
+  value: string;
+}
+
+export interface UserInputValidation {
+  pattern?: string;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+}
+
+export interface UserInputField {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'number' | 'checkbox';
+  placeholder?: string;
+  defaultValue?: any;
+  required?: boolean;
+  options?: UserInputOption[];
+  validation?: UserInputValidation;
+}
+
+export interface SkillStep {
+  id: string;
+  name: string;
+  executorType: string;
+  executorName?: string;
+  action: string;
+  params: Record<string, any>;
+  outputVariable?: string;
+  condition?: string;
+}
+
+export interface SkillOutput {
+  saveToFile?: boolean;
+  filePath?: string;
+  showInUI?: boolean;
+}
+
+export interface SkillDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  enabled: boolean;
+  builtin?: boolean;
+  builtinVariables: BuiltinVariables;
+  userInputs: UserInputField[];
+  steps: SkillStep[];
+  output?: SkillOutput;
+}
+
+export interface BuiltinVariableInfo {
+  name: string;
+  description: string;
+  example: string;
+}
+
+export interface SkillStepResult {
+  stepId: string;
+  stepName: string;
+  success: boolean;
+  output?: any;
+  error?: string;
+  duration: number;
+}
+
+export interface SkillExecutionResult {
+  success: boolean;
+  skillId: string;
+  stepResults: SkillStepResult[];
+  finalOutput?: any;
+  error?: string;
+  duration: number;
 }
 
 const API_BASE = '/api/skills';
@@ -79,5 +168,70 @@ export async function smartFetch(params: {
     body: JSON.stringify(params),
   });
   if (!res.ok) throw new Error('Failed to execute smart fetch');
+  return res.json();
+}
+
+// Skill Definitions CRUD
+
+export async function fetchBuiltinVariables(): Promise<BuiltinVariableInfo[]> {
+  const res = await fetch(`${API_BASE}/builtin-variables`);
+  if (!res.ok) throw new Error('Failed to fetch builtin variables');
+  return res.json();
+}
+
+export async function fetchSkillDefinitions(): Promise<SkillDefinition[]> {
+  const res = await fetch(`${API_BASE}/definitions`);
+  if (!res.ok) throw new Error('Failed to fetch skill definitions');
+  return res.json();
+}
+
+export async function fetchSkillDefinition(id: string): Promise<SkillDefinition> {
+  const res = await fetch(`${API_BASE}/definitions/${id}`);
+  if (!res.ok) throw new Error('Failed to fetch skill definition');
+  return res.json();
+}
+
+export async function createSkillDefinition(
+  skill: Omit<SkillDefinition, 'id' | 'builtin'>
+): Promise<SkillDefinition> {
+  const res = await fetch(`${API_BASE}/definitions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(skill),
+  });
+  if (!res.ok) throw new Error('Failed to create skill');
+  return res.json();
+}
+
+export async function updateSkillDefinition(
+  id: string,
+  skill: Partial<SkillDefinition>
+): Promise<SkillDefinition> {
+  const res = await fetch(`${API_BASE}/definitions/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(skill),
+  });
+  if (!res.ok) throw new Error('Failed to update skill');
+  return res.json();
+}
+
+export async function deleteSkillDefinition(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/definitions/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Failed to delete skill');
+}
+
+export async function executeSkill(
+  id: string,
+  userInputs: Record<string, any>
+): Promise<SkillExecutionResult> {
+  const res = await fetch(`${API_BASE}/${id}/execute`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userInputs }),
+  });
+  if (!res.ok) throw new Error('Failed to execute skill');
   return res.json();
 }

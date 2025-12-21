@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react';
+import { useParams, Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle, Play } from 'lucide-react';
 import {
   fetchSmartFetchConfig,
   updateSmartFetchConfig,
   smartFetch,
   SmartFetchResult,
+  fetchSkills,
+  fetchSkillDefinition,
+  executeSkill,
+  Skill,
+  SkillDefinition,
+  SkillExecutionResult,
 } from '@/api/skills';
 import { fetchExecutors, Executor } from '@/api/executors';
 
-export default function AIPage() {
+function SmartFetchSkill() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SmartFetchResult | null>(null);
@@ -131,8 +139,8 @@ export default function AIPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">AI</h1>
-          <p className="text-muted-foreground">AI assistant and automation features</p>
+          <h1 className="text-2xl font-bold">Smart Fetch</h1>
+          <p className="text-muted-foreground">Fetch web content and generate structured notes using AI</p>
         </div>
         <Button variant="outline" size="icon" onClick={() => setShowSettings(!showSettings)}>
           <Settings className="h-4 w-4" />
@@ -326,6 +334,300 @@ export default function AIPage() {
               </div>
             ) : (
               <div className="text-destructive">{result.error}</div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+export default function SkillsPage() {
+  const { skillId } = useParams<{ skillId: string }>();
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSkills()
+      .then(setSkills)
+      .catch((err) => console.error('Failed to load skills:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const skill = skills.find((s) => s.id === skillId);
+
+  if (!skill) {
+    if (skills.length > 0) {
+      return <Navigate to={`/skills/${skills[0].id}`} replace />;
+    }
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">暂无可用技能</p>
+      </div>
+    );
+  }
+
+  if (skillId === 'smart-fetch') {
+    return <SmartFetchSkill />;
+  }
+
+  // Custom skills use generic runner
+  if (!skill.builtin) {
+    return <CustomSkillRunner skillId={skillId!} skill={skill} />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">{skill.name}</h1>
+        <p className="text-muted-foreground">{skill.description}</p>
+      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-muted-foreground">此技能暂无专属界面</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Generic runner for custom skills
+function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }) {
+  const [definition, setDefinition] = useState<SkillDefinition | null>(null);
+  const [inputs, setInputs] = useState<Record<string, any>>({});
+  const [executing, setExecuting] = useState(false);
+  const [result, setResult] = useState<SkillExecutionResult | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSkillDefinition(skillId)
+      .then((def) => {
+        setDefinition(def);
+        // Initialize default values
+        const defaults: Record<string, any> = {};
+        def?.userInputs?.forEach((input) => {
+          if (input.defaultValue !== undefined) {
+            defaults[input.name] = input.defaultValue;
+          }
+        });
+        setInputs(defaults);
+      })
+      .catch((err) => console.error('Failed to load skill definition:', err))
+      .finally(() => setLoading(false));
+  }, [skillId]);
+
+  const handleExecute = async () => {
+    // Validate required fields
+    const missingFields = definition?.userInputs
+      ?.filter((input) => input.required && !inputs[input.name])
+      .map((input) => input.label);
+
+    if (missingFields && missingFields.length > 0) {
+      alert(`请填写必填字段: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    setExecuting(true);
+    setResult(null);
+
+    try {
+      const res = await executeSkill(skillId, inputs);
+      setResult(res);
+    } catch (error) {
+      setResult({
+        success: false,
+        skillId,
+        stepResults: [],
+        error: error instanceof Error ? error.message : 'Unknown error',
+        duration: 0,
+      });
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  const updateInput = (name: string, value: any) => {
+    setInputs((prev) => ({ ...prev, [name]: value }));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">{skill.name}</h1>
+        <p className="text-muted-foreground">{skill.description}</p>
+      </div>
+
+      {/* Input Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>输入参数</CardTitle>
+          <CardDescription>填写技能执行所需的参数</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {definition?.userInputs?.map((input) => (
+            <div key={input.name} className="space-y-2">
+              <Label>
+                {input.label}
+                {input.required && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              {input.type === 'textarea' ? (
+                <textarea
+                  className="w-full h-24 p-3 rounded-md border bg-background resize-none"
+                  value={inputs[input.name] || ''}
+                  onChange={(e) => updateInput(input.name, e.target.value)}
+                  placeholder={input.placeholder}
+                  disabled={executing}
+                />
+              ) : input.type === 'select' ? (
+                <select
+                  className="w-full p-2 rounded-md border bg-background"
+                  value={inputs[input.name] || ''}
+                  onChange={(e) => updateInput(input.name, e.target.value)}
+                  disabled={executing}
+                >
+                  <option value="">请选择...</option>
+                  {input.options?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : input.type === 'checkbox' ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={inputs[input.name] || false}
+                    onChange={(e) => updateInput(input.name, e.target.checked)}
+                    disabled={executing}
+                    className="h-4 w-4"
+                  />
+                </div>
+              ) : input.type === 'number' ? (
+                <Input
+                  type="number"
+                  value={inputs[input.name] || ''}
+                  onChange={(e) => updateInput(input.name, Number(e.target.value))}
+                  placeholder={input.placeholder}
+                  disabled={executing}
+                />
+              ) : (
+                <Input
+                  value={inputs[input.name] || ''}
+                  onChange={(e) => updateInput(input.name, e.target.value)}
+                  placeholder={input.placeholder}
+                  disabled={executing}
+                />
+              )}
+            </div>
+          ))}
+
+          {(!definition?.userInputs || definition.userInputs.length === 0) && (
+            <p className="text-muted-foreground text-center py-4">此技能无需输入参数</p>
+          )}
+        </CardContent>
+        <CardFooter>
+          <Button onClick={handleExecute} disabled={executing} className="w-full">
+            {executing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                执行中...
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                执行技能
+              </>
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Execution Result */}
+      {result && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                {result.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                )}
+                执行结果
+              </CardTitle>
+              <Badge variant={result.success ? 'default' : 'destructive'}>
+                {result.success ? '成功' : '失败'}
+              </Badge>
+            </div>
+            <CardDescription>
+              耗时: {(result.duration / 1000).toFixed(2)}s
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {result.error && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive">
+                {result.error}
+              </div>
+            )}
+
+            {/* Step Results */}
+            {result.stepResults.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">执行步骤</Label>
+                <div className="space-y-2">
+                  {result.stepResults.map((step, index) => (
+                    <div
+                      key={step.stepId}
+                      className={`flex items-center justify-between p-3 rounded-md border ${
+                        step.success
+                          ? 'bg-green-500/5 border-green-500/20'
+                          : 'bg-destructive/5 border-destructive/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{index + 1}</Badge>
+                        <span>{step.stepName}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{(step.duration / 1000).toFixed(2)}s</span>
+                        {step.success ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Final Output */}
+            {result.finalOutput && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">最终输出</Label>
+                <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[400px]">
+                  {typeof result.finalOutput === 'string'
+                    ? result.finalOutput
+                    : JSON.stringify(result.finalOutput, null, 2)}
+                </pre>
+              </div>
             )}
           </CardContent>
         </Card>

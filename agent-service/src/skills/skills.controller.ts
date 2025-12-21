@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Put, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { SkillsService } from './skills.service';
 import { SmartFetchDto, UpdateSkillConfigDto } from './dto/smart-fetch.dto';
+import { CreateSkillDto, UpdateSkillDto } from './dto/create-skill.dto';
+import { ExecuteSkillDto } from './dto/execute-skill.dto';
 
 @Controller('api/skills')
 export class SkillsController {
@@ -9,6 +11,44 @@ export class SkillsController {
   @Get()
   getAvailableSkills() {
     return this.skillsService.getAvailableSkills();
+  }
+
+  @Get('builtin-variables')
+  getBuiltinVariables() {
+    return this.skillsService.getBuiltinVariables();
+  }
+
+  @Get('definitions')
+  getAllSkillDefinitions() {
+    return this.skillsService.getAllSkillDefinitions();
+  }
+
+  @Get('definitions/:id')
+  getSkillDefinition(@Param('id') id: string) {
+    return this.skillsService.getSkillById(id);
+  }
+
+  @Post('definitions')
+  createSkill(@Body() dto: CreateSkillDto) {
+    return this.skillsService.createSkill(dto);
+  }
+
+  @Put('definitions/:id')
+  updateSkill(@Param('id') id: string, @Body() dto: UpdateSkillDto) {
+    return this.skillsService.updateSkill(id, dto);
+  }
+
+  @Delete('definitions/:id')
+  deleteSkill(@Param('id') id: string) {
+    return this.skillsService.deleteSkill(id);
+  }
+
+  @Post(':id/execute')
+  async executeSkill(
+    @Param('id') id: string,
+    @Body() dto: ExecuteSkillDto,
+  ) {
+    return this.skillsService.executeSkill(id, dto.userInputs || {});
   }
 
   @Get('config')

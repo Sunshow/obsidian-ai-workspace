@@ -1,10 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import * as yaml from 'js-yaml';
 import { ExecutorsService } from '../executors/executors.service';
 import { SkillConfig, SmartFetchConfig, SmartFetchResult } from './interfaces/skill.interface';
 import { SmartFetchDto, UpdateSkillConfigDto } from './dto/smart-fetch.dto';
+import {
+  SkillDefinition,
+  SkillExecutionResult,
+} from './interfaces/skill-definition.interface';
+import { CreateSkillDto, UpdateSkillDto } from './dto/create-skill.dto';
+import { SkillExecutorService } from './skill-executor.service';
 
 const DEFAULT_PROMPT = `请根据以下网页内容生成一份结构化的 Markdown 笔记。要求：
 1. 提取关键信息和要点
@@ -19,10 +25,13 @@ const DEFAULT_PROMPT = `请根据以下网页内容生成一份结构化的 Mark
 @Injectable()
 export class SkillsService {
   private readonly logger = new Logger(SkillsService.name);
-  private config: SkillConfig;
+  private config: SkillConfig & { skills?: SkillDefinition[] };
   private readonly configPath: string;
 
-  constructor(private readonly executorsService: ExecutorsService) {
+  constructor(
+    private readonly executorsService: ExecutorsService,
+    private readonly skillExecutorService: SkillExecutorService,
+  ) {
     this.configPath = join(process.cwd(), 'config', 'skills.yaml');
     this.loadConfig();
   }
@@ -231,13 +240,131 @@ export class SkillsService {
   }
 
   getAvailableSkills() {
-    return [
+    const builtinSkills = [
       {
         id: 'smart-fetch',
         name: 'Smart Fetch',
         description: 'Fetch web content and generate structured notes using AI',
         endpoint: '/api/skills/smart-fetch',
+        builtin: true,
       },
     ];
+
+    const customSkills = (this.config.skills || []).map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      endpoint: `/api/skills/${skill.id}/execute`,
+      builtin: false,
+      enabled: skill.enabled,
+    }));
+
+    return [...builtinSkills, ...customSkills];
+  }
+
+  // Custom Skills CRUD
+
+  getAllSkillDefinitions(): SkillDefinition[] {
+    return this.config.skills || [];
+  }
+
+  getSkillById(id: string): SkillDefinition | undefined {
+    return (this.config.skills || []).find((s) => s.id === id);
+  }
+
+  createSkill(dto: CreateSkillDto): SkillDefinition {
+    if (!this.config.skills) {
+      this.config.skills = [];
+    }
+
+    // Generate ID from name
+    const id = dto.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    // Check for duplicate ID
+    if (this.config.skills.some((s) => s.id === id)) {
+      throw new BadRequestException(`Skill with ID "${id}" already exists`);
+    }
+
+    const skill: SkillDefinition = {
+      id,
+      name: dto.name,
+      description: dto.description,
+      icon: dto.icon,
+      enabled: dto.enabled ?? true,
+      builtin: false,
+      builtinVariables: dto.builtinVariables || {},
+      userInputs: dto.userInputs || [],
+      steps: dto.steps || [],
+      output: dto.output,
+    };
+
+    this.config.skills.push(skill);
+    this.saveConfig();
+
+    this.logger.log(`Created skill: ${skill.id}`);
+    return skill;
+  }
+
+  updateSkill(id: string, dto: UpdateSkillDto): SkillDefinition {
+    const skills = this.config.skills || [];
+    const index = skills.findIndex((s) => s.id === id);
+
+    if (index === -1) {
+      throw new NotFoundException(`Skill "${id}" not found`);
+    }
+
+    const skill = skills[index];
+
+    if (dto.name !== undefined) skill.name = dto.name;
+    if (dto.description !== undefined) skill.description = dto.description;
+    if (dto.icon !== undefined) skill.icon = dto.icon;
+    if (dto.enabled !== undefined) skill.enabled = dto.enabled;
+    if (dto.builtinVariables !== undefined) skill.builtinVariables = dto.builtinVariables;
+    if (dto.userInputs !== undefined) skill.userInputs = dto.userInputs;
+    if (dto.steps !== undefined) skill.steps = dto.steps;
+    if (dto.output !== undefined) skill.output = dto.output;
+
+    this.saveConfig();
+
+    this.logger.log(`Updated skill: ${id}`);
+    return skill;
+  }
+
+  deleteSkill(id: string): void {
+    const skills = this.config.skills || [];
+    const index = skills.findIndex((s) => s.id === id);
+
+    if (index === -1) {
+      throw new NotFoundException(`Skill "${id}" not found`);
+    }
+
+    skills.splice(index, 1);
+    this.saveConfig();
+
+    this.logger.log(`Deleted skill: ${id}`);
+  }
+
+  async executeSkill(
+    id: string,
+    userInputs: Record<string, any>,
+  ): Promise<SkillExecutionResult> {
+    const skill = this.getSkillById(id);
+
+    if (!skill) {
+      throw new NotFoundException(`Skill "${id}" not found`);
+    }
+
+    if (!skill.enabled) {
+      throw new BadRequestException(`Skill "${id}" is disabled`);
+    }
+
+    return this.skillExecutorService.executeSkill(skill, userInputs);
+  }
+
+  getBuiltinVariables() {
+    return this.skillExecutorService.getBuiltinVariables();
   }
 }
