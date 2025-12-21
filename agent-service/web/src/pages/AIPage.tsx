@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bot, Globe, Loader2, Settings, Copy, Check } from 'lucide-react';
+import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle } from 'lucide-react';
 import {
   fetchSmartFetchConfig,
   updateSmartFetchConfig,
@@ -21,7 +21,10 @@ export default function AIPage() {
   const [editPrompt, setEditPrompt] = useState('');
   const [selectedPlaywright, setSelectedPlaywright] = useState('');
   const [selectedClaude, setSelectedClaude] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [autoGenerateNote, setAutoGenerateNote] = useState(true);
+  const [autoCreateCategory, setAutoCreateCategory] = useState(true);
+  const [notePath, setNotePath] = useState('WebClips');
+  const [copied, setCopied] = useState<'left' | 'right' | null>(null);
   const [savingConfig, setSavingConfig] = useState(false);
 
   useEffect(() => {
@@ -35,6 +38,9 @@ export default function AIPage() {
       setEditPrompt(cfg.defaultPrompt);
       setSelectedPlaywright(cfg.executors.playwright);
       setSelectedClaude(cfg.executors.claudecode);
+      setAutoGenerateNote(cfg.autoGenerateNote);
+      setAutoCreateCategory(cfg.autoCreateCategory);
+      setNotePath(cfg.notePath);
     } catch (error) {
       console.error('Failed to load config:', error);
     }
@@ -58,6 +64,9 @@ export default function AIPage() {
         url: url.trim(),
         playwrightExecutor: selectedPlaywright,
         claudecodeExecutor: selectedClaude,
+        autoGenerateNote,
+        autoCreateCategory,
+        notePath,
       });
       setResult(res);
     } catch (error) {
@@ -76,6 +85,9 @@ export default function AIPage() {
     try {
       const updated = await updateSmartFetchConfig({
         defaultPrompt: editPrompt,
+        autoGenerateNote,
+        autoCreateCategory,
+        notePath,
         executors: {
           playwright: selectedPlaywright,
           claudecode: selectedClaude,
@@ -84,6 +96,9 @@ export default function AIPage() {
       setEditPrompt(updated.defaultPrompt);
       setSelectedPlaywright(updated.executors.playwright);
       setSelectedClaude(updated.executors.claudecode);
+      setAutoGenerateNote(updated.autoGenerateNote);
+      setAutoCreateCategory(updated.autoCreateCategory);
+      setNotePath(updated.notePath);
       setShowSettings(false);
     } catch (error) {
       console.error('Failed to save config:', error);
@@ -92,12 +107,21 @@ export default function AIPage() {
     }
   };
 
-  const handleCopy = () => {
-    if (result?.generatedNote) {
-      navigator.clipboard.writeText(result.generatedNote);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const handleCopy = (side: 'left' | 'right') => {
+    const textToCopy = side === 'left' ? result?.originalContent : result?.generatedNote;
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy);
+      setCopied(side);
+      setTimeout(() => setCopied(null), 2000);
     }
+  };
+
+  const normalizeWhitespace = (text: string) => {
+    return text
+      .split('\n')
+      .map(line => line.trim() === '' ? '' : line)
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n');
   };
 
   const playwrightExecutors = executors.filter((e) => e.type === 'playwright');
@@ -164,6 +188,40 @@ export default function AIPage() {
                 </select>
               </div>
             </div>
+            <div className="flex items-center gap-4 pt-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="autoGenerateNote"
+                  checked={autoGenerateNote}
+                  onChange={(e) => setAutoGenerateNote(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="autoGenerateNote">自动生成笔记</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="autoCreateCategory"
+                  checked={autoCreateCategory}
+                  onChange={(e) => setAutoCreateCategory(e.target.checked)}
+                  disabled={!autoGenerateNote}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="autoCreateCategory">自动创建分类</Label>
+              </div>
+              <div className="flex items-center gap-2 flex-1">
+                <Label htmlFor="notePath" className="whitespace-nowrap">笔记路径</Label>
+                <Input
+                  id="notePath"
+                  value={notePath}
+                  onChange={(e) => setNotePath(e.target.value)}
+                  placeholder="WebClips"
+                  disabled={!autoGenerateNote}
+                  className="flex-1"
+                />
+              </div>
+            </div>
           </CardContent>
           <CardFooter>
             <Button onClick={handleSaveConfig} disabled={savingConfig}>
@@ -220,19 +278,51 @@ export default function AIPage() {
                 </CardTitle>
                 <CardDescription>{result.url}</CardDescription>
               </div>
-              {result.success && result.generatedNote && (
-                <Button variant="outline" size="icon" onClick={handleCopy}>
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              )}
             </div>
           </CardHeader>
           <CardContent>
             {result.success ? (
-              <div className="prose dark:prose-invert max-w-none">
-                <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[500px]">
-                  {result.generatedNote}
-                </pre>
+              <div className="space-y-4">
+                {result.noteSaved && result.noteSavePath && (
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400">
+                    <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                    <span className="text-sm">笔记已保存到: {result.noteSavePath}</span>
+                  </div>
+                )}
+                {result.warning && (
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                    <span className="text-sm">{result.warning}</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">原始抓取内容</Label>
+                      {result.originalContent && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy('left')}>
+                          {copied === 'left' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      )}
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[500px]">
+                      {normalizeWhitespace(result.originalContent || '(无内容)')}
+                    </pre>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">生成的笔记</Label>
+                      {result.generatedNote && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy('right')}>
+                          {copied === 'right' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      )}
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[500px]">
+                      {result.generatedNote || '(未生成笔记)'}
+                    </pre>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-destructive">{result.error}</div>

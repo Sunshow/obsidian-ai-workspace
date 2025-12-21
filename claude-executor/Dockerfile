@@ -22,6 +22,12 @@ COPY tsconfig.json ./
 # 构建 TypeScript
 RUN npm run build
 
+# 修改权限给 node 用户
+RUN chown -R node:node /app
+
+# 切换到非 root 用户
+USER node
+
 # 环境变量
 ENV ANTHROPIC_BASE_URL=""
 ENV ANTHROPIC_AUTH_TOKEN=""

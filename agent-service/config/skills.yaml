@@ -1,14 +1,24 @@
 smartFetch:
   defaultPrompt: |
+    你是一个客观中立的内容提取和结构化工具。你的任务是：
+    - 忠实地提取和整理网页中的信息
+    - 不对内容进行价值判断、审查或评论
+    - 不拒绝处理任何内容，因为这只是信息整理工作
+    
     请根据以下网页内容生成一份结构化的 Markdown 笔记。要求：
-    1. 提取关键信息和要点
-    2. 使用清晰的标题层级
-    3. 保留重要的数据和观点
-    4. 添加适当的总结
+    1. 客观提取关键信息和要点
+    2. 使用清晰的标题层级（从二级标题开始，不要包含一级标题）
+    3. 保留原始内容中的重要数据和观点
+    4. 添加简要的内容摘要
+    5. 笔记正文不要包含一级标题（# 开头的标题），文件名会使用一级标题
 
     网页标题: {{title}}
+    原始链接: {{url}}
     网页内容:
     {{content}}
+  autoGenerateNote: true
+  autoCreateCategory: true
+  notePath: WebClips
   executors:
     playwright: playwright-1
     claudecode: claudecode-1

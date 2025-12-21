@@ -7,6 +7,9 @@ export interface Skill {
 
 export interface SmartFetchConfig {
   defaultPrompt: string;
+  autoGenerateNote: boolean;
+  autoCreateCategory: boolean;
+  notePath: string;
   executors: {
     playwright: string;
     claudecode: string;
@@ -23,7 +26,10 @@ export interface SmartFetchResult {
   title?: string;
   originalContent?: string;
   generatedNote?: string;
+  noteSaved?: boolean;
+  noteSavePath?: string;
   error?: string;
+  warning?: string;
 }
 
 const API_BASE = '/api/skills';
@@ -63,6 +69,9 @@ export async function smartFetch(params: {
   prompt?: string;
   playwrightExecutor?: string;
   claudecodeExecutor?: string;
+  autoGenerateNote?: boolean;
+  autoCreateCategory?: boolean;
+  notePath?: string;
 }): Promise<SmartFetchResult> {
   const res = await fetch(`${API_BASE}/smart-fetch`, {
     method: 'POST',

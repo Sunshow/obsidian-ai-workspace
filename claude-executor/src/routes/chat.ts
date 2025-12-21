@@ -25,7 +25,7 @@ function buildCliArgs(
   systemPrompt?: string,
   stream: boolean = true
 ): string[] {
-  const args = ['-p', userMessage, '--model', model];
+  const args = ['-p', userMessage, '--model', model, '--dangerously-skip-permissions'];
 
   if (stream) {
     args.push('--output-format', 'stream-json', '--verbose');

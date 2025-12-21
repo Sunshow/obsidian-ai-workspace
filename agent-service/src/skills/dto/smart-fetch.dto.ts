@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
 export class SmartFetchDto {
   @IsString()
@@ -15,12 +15,36 @@ export class SmartFetchDto {
   @IsString()
   @IsOptional()
   claudecodeExecutor?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  autoGenerateNote?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  autoCreateCategory?: boolean;
+
+  @IsString()
+  @IsOptional()
+  notePath?: string;
 }
 
 export class UpdateSkillConfigDto {
   @IsString()
   @IsOptional()
   defaultPrompt?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  autoGenerateNote?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  autoCreateCategory?: boolean;
+
+  @IsString()
+  @IsOptional()
+  notePath?: string;
 
   @IsOptional()
   executors?: {
