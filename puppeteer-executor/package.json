@@ -1,7 +1,7 @@
 {
-  "name": "agent-service",
+  "name": "puppeteer-executor",
   "version": "1.0.0",
-  "description": "AI Agent service for Obsidian AI Workspace",
+  "description": "Puppeteer web scraping HTTP API",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -9,7 +9,6 @@
     "dev": "ts-node src/index.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.52.0",
     "@mozilla/readability": "0.6.0",
     "express": "^4.21.0",
     "jsdom": "^25.0.1",

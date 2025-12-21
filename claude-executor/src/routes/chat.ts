@@ -34,7 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
 
       const env = {
         ...process.env,
-        HOME: '/config',
+        HOME: process.env.HOME || '/root',
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_AUTH_TOKEN,
         ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL || undefined
       };
@@ -117,7 +117,7 @@ router.post('/', async (req: Request, res: Response) => {
       // 非流式响应
       const env = {
         ...process.env,
-        HOME: '/config',
+        HOME: process.env.HOME || '/root',
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_AUTH_TOKEN,
         ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL || undefined
       };
