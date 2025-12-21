@@ -19,6 +19,9 @@ RUN apt-get update && \
 
 RUN node --version && npm --version
 
+# 安装 Claude Code CLI
+RUN npm install -g @anthropic-ai/claude-code
+
 # 复制并构建 Agent Service
 COPY agent-service /app/agent-service
 WORKDIR /app/agent-service
