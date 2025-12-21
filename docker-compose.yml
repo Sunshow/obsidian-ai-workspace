@@ -1,4 +1,20 @@
 services:
+  # Agent Service - Executor Manager with WebUI
+  agent-service:
+    build: ./agent-service
+    container_name: agent-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vaults:/vaults
+      - ./agent-service/config:/app/config
+    environment:
+      - AGENT_PORT=8000
+    depends_on:
+      - claude-executor
+      - puppeteer-executor
+
   # Obsidian Desktop (可选，直接使用官方镜像)
   obsidian:
     image: linuxserver/obsidian:latest
@@ -7,7 +23,6 @@ services:
     shm_size: "1gb"
     ports:
       - "3000:3000"
-      - "3001:3001"
     volumes:
       - ./config:/config
       - ./vaults:/vaults
@@ -29,6 +44,9 @@ services:
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
       - AGENT_PORT=3002
+      - CLAUDE_DEFAULT_MODEL=${CLAUDE_DEFAULT_MODEL:-claude-sonnet-4-5-20250929}
+      # - CLAUDE_MAX_TURNS=10
+      # - CLAUDE_SYSTEM_PROMPT=You are a helpful assistant
 
   # Puppeteer Web Scraping API
   puppeteer-executor:

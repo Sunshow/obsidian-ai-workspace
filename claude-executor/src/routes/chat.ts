@@ -3,6 +3,8 @@ import { spawn } from 'child_process';
 
 const router = Router();
 
+const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929';
+
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -12,19 +14,57 @@ interface ChatRequest {
   model?: string;
   messages: ChatMessage[];
   stream?: boolean;
+  max_turns?: number;
+  system_prompt?: string;
+}
+
+function buildCliArgs(
+  userMessage: string,
+  model: string,
+  maxTurns?: number,
+  systemPrompt?: string,
+  stream: boolean = true
+): string[] {
+  const args = ['-p', userMessage, '--model', model];
+
+  if (stream) {
+    args.push('--output-format', 'stream-json', '--verbose');
+  }
+
+  if (maxTurns) {
+    args.push('--max-turns', String(maxTurns));
+  }
+
+  if (systemPrompt) {
+    args.push('--system-prompt', systemPrompt);
+  }
+
+  return args;
 }
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { messages, stream = true } = req.body as ChatRequest;
+    const { messages, stream = true, max_turns, system_prompt } = req.body as ChatRequest;
 
     if (!messages || messages.length === 0) {
       res.status(400).json({ error: 'Messages are required' });
       return;
     }
 
+    // Model priority: request > env > default
+    const model = req.body.model
+      || process.env.CLAUDE_DEFAULT_MODEL
+      || DEFAULT_MODEL;
+
+    // Max turns: request > env
+    const maxTurns = max_turns
+      || (process.env.CLAUDE_MAX_TURNS ? parseInt(process.env.CLAUDE_MAX_TURNS, 10) : undefined);
+
+    // System prompt: request > env
+    const systemPrompt = system_prompt || process.env.CLAUDE_SYSTEM_PROMPT;
+
     const userMessage = messages[messages.length - 1].content;
-    console.log('Chat request received:', userMessage);
+    console.log('Chat request received:', { message: userMessage, model, maxTurns, systemPrompt: systemPrompt ? '***' : undefined });
 
     if (stream) {
       // SSE 流式响应
@@ -45,8 +85,10 @@ router.post('/', async (req: Request, res: Response) => {
         ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL
       });
 
-      // 使用 --output-format stream-json 获取 JSON 格式输出
-      const proc = spawn('claude', ['-p', userMessage, '--output-format', 'stream-json', '--verbose'], {
+      const args = buildCliArgs(userMessage, model, maxTurns, systemPrompt, true);
+      console.log('Claude Code args:', args.map(a => a === systemPrompt ? '***' : a));
+
+      const proc = spawn('claude', args, {
         cwd: '/vaults',
         stdio: ['inherit', 'pipe', 'pipe'],
         env: env as NodeJS.ProcessEnv
@@ -122,7 +164,10 @@ router.post('/', async (req: Request, res: Response) => {
         ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL || undefined
       };
 
-      const proc = spawn('claude', ['-p', userMessage], {
+      const args = buildCliArgs(userMessage, model, maxTurns, systemPrompt, false);
+      console.log('Claude Code args (non-stream):', args.map(a => a === systemPrompt ? '***' : a));
+
+      const proc = spawn('claude', args, {
         cwd: '/vaults',
         stdio: ['inherit', 'pipe', 'pipe'],
         env: env as NodeJS.ProcessEnv
