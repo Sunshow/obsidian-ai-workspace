@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv bash
+
+cd /app/agent-service
+exec s6-setuidgid abc node dist/index.js

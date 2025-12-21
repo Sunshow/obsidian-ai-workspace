@@ -10,6 +10,7 @@ services:
     ports:
       - "3000:3000"
       - "3001:3001"
+      - "3002:3002"
     volumes:
       - ./config:/config
       - ./vaults:/vaults
@@ -20,3 +21,4 @@ services:
       - RESTART_APP=true
       - ANTHROPIC_BASE_URL=
       - ANTHROPIC_AUTH_TOKEN=
+      - AGENT_PORT=3002

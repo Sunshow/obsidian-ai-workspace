@@ -22,3 +22,5 @@ config/
 
 # Docker
 *.tar
+
+docker-compose.yml
