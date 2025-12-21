@@ -1,0 +1,45 @@
+services:
+  # Obsidian Desktop (可选，直接使用官方镜像)
+  obsidian:
+    image: linuxserver/obsidian:latest
+    container_name: obsidian
+    restart: unless-stopped
+    shm_size: "1gb"
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - ./config:/config
+      - ./vaults:/vaults
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+
+  # Claude Code CLI HTTP API
+  claude-executor:
+    build: ./claude-executor
+    container_name: claude-executor
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./vaults:/vaults
+    environment:
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
+      - AGENT_PORT=3002
+
+  # Puppeteer Web Scraping API
+  puppeteer-executor:
+    build: ./puppeteer-executor
+    container_name: puppeteer-executor
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./vaults:/vaults
+    environment:
+      - AGENT_PORT=3003
+    cap_add:
+      - SYS_ADMIN
