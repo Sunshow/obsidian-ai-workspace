@@ -15,3 +15,11 @@ executors:
     description: Puppeteer Web Scraping Executor
     typeConfig:
       timeout: 30000
+  - name: playwright-1
+    type: playwright
+    endpoint: ws://playwright-executor:53333/playwright
+    healthPath: /
+    enabled: true
+    description: Playwright Browser Executor (ARM compatible)
+    typeConfig:
+      timeout: 30000

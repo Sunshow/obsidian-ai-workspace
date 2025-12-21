@@ -6,6 +6,7 @@ import { join } from 'path';
 import { AppConfigModule } from './config/config.module';
 import { ExecutorTypesModule } from './executor-types/executor-types.module';
 import { ExecutorsModule } from './executors/executors.module';
+import { SkillsModule } from './skills/skills.module';
 import { HealthController } from './health/health.controller';
 import configuration from './config/configuration';
 
@@ -23,6 +24,7 @@ import configuration from './config/configuration';
     AppConfigModule,
     ExecutorTypesModule,
     ExecutorsModule,
+    SkillsModule,
   ],
   controllers: [HealthController],
 })

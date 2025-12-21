@@ -1,0 +1,14 @@
+smartFetch:
+  defaultPrompt: |
+    请根据以下网页内容生成一份结构化的 Markdown 笔记。要求：
+    1. 提取关键信息和要点
+    2. 使用清晰的标题层级
+    3. 保留重要的数据和观点
+    4. 添加适当的总结
+
+    网页标题: {{title}}
+    网页内容:
+    {{content}}
+  executors:
+    playwright: playwright-1
+    claudecode: claudecode-1

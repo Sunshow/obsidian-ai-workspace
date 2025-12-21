@@ -61,3 +61,15 @@ services:
       - AGENT_PORT=3003
     cap_add:
       - SYS_ADMIN
+
+  # Playwright Browser Server (ARM compatible)
+  playwright-executor:
+    image: jacoblincool/playwright:chromium-light-server
+    container_name: playwright-executor
+    restart: unless-stopped
+    ports:
+      - "53333:53333"
+    environment:
+      - BROWSER_PORT=53333
+      - BROWSER_WS_ENDPOINT=/playwright
+      - BROWSER_HOST=0.0.0.0

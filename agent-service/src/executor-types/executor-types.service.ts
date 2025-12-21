@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ExecutorTypeHandler } from './interfaces/executor-type.interface';
 import { ClaudeCodeHandler } from './handlers/claudecode.handler';
 import { PuppeteerHandler } from './handlers/puppeteer.handler';
+import { PlaywrightHandler } from './handlers/playwright.handler';
 
 @Injectable()
 export class ExecutorTypesService {
@@ -16,6 +17,7 @@ export class ExecutorTypesService {
     const builtInHandlers: ExecutorTypeHandler[] = [
       new ClaudeCodeHandler(),
       new PuppeteerHandler(),
+      new PlaywrightHandler(),
     ];
 
     for (const handler of builtInHandlers) {
