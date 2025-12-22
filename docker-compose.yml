@@ -49,18 +49,18 @@ services:
       # - CLAUDE_SYSTEM_PROMPT=You are a helpful assistant
 
   # Puppeteer Web Scraping API
-  puppeteer-executor:
-    build: ./puppeteer-executor
-    container_name: puppeteer-executor
-    restart: unless-stopped
-    ports:
-      - "3003:3003"
-    volumes:
-      - ./vaults:/vaults
-    environment:
-      - AGENT_PORT=3003
-    cap_add:
-      - SYS_ADMIN
+#  puppeteer-executor:
+#    build: ./puppeteer-executor
+#    container_name: puppeteer-executor
+#    restart: unless-stopped
+#    ports:
+#      - "3003:3003"
+#    volumes:
+#      - ./vaults:/vaults
+#    environment:
+#      - AGENT_PORT=3003
+#    cap_add:
+#      - SYS_ADMIN
 
   # Playwright Browser Server (ARM compatible)
   playwright-executor:
