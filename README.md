@@ -152,7 +152,28 @@ docker compose up -d
 - [x] Agent Service（执行器管理 + WebUI）
 - [x] Claude Code Executor
 - [x] Playwright Executor
+- [ ] 技能分享和上传
 - [ ] 更多 AI Agent 集成
+- [ ] 完善国际化支持
+- [ ] 增加更多配置项预设
+- [ ] 笔记内容的 AI 检索问答对话
+- [ ] 更多玩法等待拓展...
+
+## 常见问题 (FAQ)
+
+### 只能用 Obsidian 吗？
+
+不是的。虽然项目名叫 "Obsidian AI Workspace"，但实际上任何基于文件夹的笔记系统都能工作。最初是因为想增强 Obsidian 的使用体验才有了这个项目，名字就这样沿用下来了。
+
+### 用户名密码/访问控制怎么办？
+
+本项目专注于核心功能，不内置身份验证机制。如果需要访问控制，建议通过反向代理（如 Nginx、Traefik）配合 Authelia、Authentik 等认证服务自行搭建。
+
+### 技能执行失败怎么办？
+
+1. 检查执行器状态是否正常（在 WebUI 中查看）
+2. 确认 Claude API Key 配置正确
+3. 查看 Agent Service 日志：`docker compose logs -f agent-service`
 
 ## 致谢
 
