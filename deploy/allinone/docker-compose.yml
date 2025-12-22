@@ -1,0 +1,58 @@
+services:
+  # Agent Service - Executor Manager with WebUI
+  agent-service:
+    image: sunshow/obsidian-ai-agent-service:latest
+    container_name: agent-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vaults:/vaults
+      - ./config/agent:/app/config
+    environment:
+      - AGENT_PORT=8000
+    depends_on:
+      - claude-executor
+
+  # Obsidian Desktop
+  obsidian:
+    image: linuxserver/obsidian:latest
+    container_name: obsidian
+    restart: unless-stopped
+    shm_size: "1gb"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config/obsidian:/config
+      - ./vaults:/vaults
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+
+  # Claude Code CLI HTTP API
+  claude-executor:
+    image: sunshow/obsidian-ai-claude-executor:latest
+    container_name: claude-executor
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./vaults:/vaults
+    environment:
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
+      - AGENT_PORT=3002
+      - CLAUDE_DEFAULT_MODEL=${CLAUDE_DEFAULT_MODEL:-claude-sonnet-4-5-20250929}
+
+  # Playwright Browser Server (ARM compatible)
+  playwright-executor:
+    image: jacoblincool/playwright:chromium-light-server
+    container_name: playwright-executor
+    restart: unless-stopped
+    ports:
+      - "53333:53333"
+    environment:
+      - BROWSER_PORT=53333
+      - BROWSER_WS_ENDPOINT=/playwright
+      - BROWSER_HOST=0.0.0.0
