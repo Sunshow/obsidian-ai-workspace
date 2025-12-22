@@ -235,3 +235,9 @@ export async function executeSkill(
   if (!res.ok) throw new Error('Failed to execute skill');
   return res.json();
 }
+
+export async function reloadSkills(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/reload`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to reload skills');
+  return res.json();
+}

@@ -4,7 +4,7 @@ import { Readability } from '@mozilla/readability';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Executor } from '../../executors/interfaces/executor.interface';
-import { InvokeResult, ConfigSchemaField, HealthResult } from '../interfaces/executor-type.interface';
+import { InvokeResult, ConfigSchemaField, HealthResult, ActionDefinition } from '../interfaces/executor-type.interface';
 import { BaseExecutorHandler } from './base.handler';
 
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -46,6 +46,103 @@ export class PlaywrightHandler extends BaseExecutorHandler {
 
   getSupportedActions(): string[] {
     return ['fetch', 'screenshot'];
+  }
+
+  getActionDefinitions(): ActionDefinition[] {
+    return [
+      {
+        name: 'fetch',
+        displayName: '抓取网页内容',
+        description: '抓取网页并使用 Readability 提取正文内容，支持 JS 渲染页面和 Cloudflare 保护',
+        params: [
+          {
+            name: 'url',
+            type: 'string',
+            required: true,
+            description: '要抓取的网页 URL',
+            example: 'https://example.com/article',
+          },
+          {
+            name: 'includeHtml',
+            type: 'boolean',
+            required: false,
+            description: '是否在返回结果中包含 HTML 内容',
+            default: false,
+          },
+          {
+            name: 'waitUntil',
+            type: 'string',
+            required: false,
+            description: '等待条件: domcontentloaded, load, networkidle',
+            default: 'domcontentloaded',
+          },
+          {
+            name: 'timeout',
+            type: 'number',
+            required: false,
+            description: '超时时间（毫秒）',
+            default: 30000,
+          },
+        ],
+        returns: {
+          description: '包含标题和正文的对象',
+          example: {
+            success: true,
+            url: 'https://example.com',
+            title: '文章标题',
+            textContent: '正文内容...',
+          },
+        },
+      },
+      {
+        name: 'screenshot',
+        displayName: '网页截图',
+        description: '对网页进行截图，支持全页面截图和保存到文件',
+        params: [
+          {
+            name: 'url',
+            type: 'string',
+            required: true,
+            description: '要截图的网页 URL',
+            example: 'https://example.com',
+          },
+          {
+            name: 'fullPage',
+            type: 'boolean',
+            required: false,
+            description: '是否截取整个页面',
+            default: false,
+          },
+          {
+            name: 'savePath',
+            type: 'string',
+            required: false,
+            description: '保存截图的目录路径，不填则返回 base64',
+          },
+          {
+            name: 'fileName',
+            type: 'string',
+            required: false,
+            description: '截图文件名，不填则自动生成',
+          },
+          {
+            name: 'waitUntil',
+            type: 'string',
+            required: false,
+            description: '等待条件: domcontentloaded, load, networkidle',
+            default: 'domcontentloaded',
+          },
+        ],
+        returns: {
+          description: '截图结果，包含文件路径或 base64 数据',
+          example: {
+            success: true,
+            url: 'https://example.com',
+            screenshot: 'data:image/png;base64,...',
+          },
+        },
+      },
+    ];
   }
 
   async checkHealth(executor: Executor): Promise<HealthResult> {

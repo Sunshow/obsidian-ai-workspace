@@ -10,6 +10,34 @@ export interface Executor {
   responseTime?: number;
 }
 
+export interface ActionParameter {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  required: boolean;
+  description: string;
+  default?: any;
+  example?: any;
+}
+
+export interface ActionDefinition {
+  name: string;
+  displayName: string;
+  description: string;
+  params: ActionParameter[];
+  returns: {
+    description: string;
+    example?: any;
+  };
+}
+
+export interface ExecutorType {
+  name: string;
+  displayName: string;
+  configSchema: Record<string, any>;
+  supportedActions: string[];
+  actionDefinitions: ActionDefinition[];
+}
+
 const API_BASE = '/api/executors';
 
 export async function fetchExecutors(): Promise<Executor[]> {
@@ -64,5 +92,11 @@ export async function checkHealth(name: string): Promise<Executor> {
 export async function checkAllHealth(): Promise<Executor[]> {
   const res = await fetch(`${API_BASE}/check-all`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to check all health');
+  return res.json();
+}
+
+export async function fetchExecutorTypes(): Promise<ExecutorType[]> {
+  const res = await fetch('/api/executor-types');
+  if (!res.ok) throw new Error('Failed to fetch executor types');
   return res.json();
 }

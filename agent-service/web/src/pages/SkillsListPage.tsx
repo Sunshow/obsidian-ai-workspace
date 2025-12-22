@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Zap, Edit, Trash2, Play, Lock } from 'lucide-react';
+import { Plus, Zap, Edit, Trash2, Play, Lock, RefreshCw } from 'lucide-react';
 import {
   fetchSkills,
   fetchSkillDefinitions,
   deleteSkillDefinition,
+  reloadSkills,
   Skill,
   SkillDefinition,
 } from '@/api/skills';
@@ -16,6 +17,7 @@ export default function SkillsListPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [, setDefinitions] = useState<SkillDefinition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloading, setReloading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,6 +49,18 @@ export default function SkillsListPage() {
     }
   };
 
+  const handleReload = async () => {
+    setReloading(true);
+    try {
+      await reloadSkills();
+      await loadData();
+    } catch (error) {
+      console.error('Failed to reload skills:', error);
+    } finally {
+      setReloading(false);
+    }
+  };
+
   const builtinSkills = skills.filter((s) => s.builtin);
   const customSkills = skills.filter((s) => !s.builtin);
 
@@ -65,10 +79,16 @@ export default function SkillsListPage() {
           <h1 className="text-2xl font-bold">Skills</h1>
           <p className="text-muted-foreground">管理和创建自动化技能</p>
         </div>
-        <Button onClick={() => navigate('/skills/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          创建技能
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleReload} disabled={reloading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${reloading ? 'animate-spin' : ''}`} />
+            刷新配置
+          </Button>
+          <Button onClick={() => navigate('/skills/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            创建技能
+          </Button>
+        </div>
       </div>
 
       {/* Builtin Skills */}

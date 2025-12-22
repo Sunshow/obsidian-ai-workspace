@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ExecutorsService } from '../executors/executors.service';
+import { ExecutorTypesService } from '../executor-types/executor-types.service';
 import {
   SkillDefinition,
   SkillExecutionContext,
@@ -12,7 +13,10 @@ import {
 export class SkillExecutorService {
   private readonly logger = new Logger(SkillExecutorService.name);
 
-  constructor(private readonly executorsService: ExecutorsService) {}
+  constructor(
+    private readonly executorsService: ExecutorsService,
+    private readonly executorTypesService: ExecutorTypesService,
+  ) {}
 
   getBuiltinVariables(): BuiltinVariableInfo[] {
     return [
@@ -216,25 +220,45 @@ export class SkillExecutorService {
         }
 
         try {
-          // Get executor name
-          const executorName = await this.getExecutorByType(
-            step.executorType,
-            step.executorName,
-          );
-
           // Replace variables in params
           const params = this.replaceVariables(step.params || {}, context);
 
-          this.logger.log(
-            `Executing step ${step.id}: ${step.name} with executor ${executorName}`,
-          );
+          let result: any;
 
-          // Invoke executor
-          const result = await this.executorsService.invoke(
-            executorName,
-            step.action,
-            params,
-          );
+          // Check if this is an agent (built-in) executor type
+          if (step.executorType === 'agent') {
+            const handler = this.executorTypesService.getHandler('agent');
+            if (!handler) {
+              throw new Error('Agent handler not found');
+            }
+            
+            this.logger.log(
+              `Executing step ${step.id}: ${step.name} with built-in agent handler`,
+            );
+            
+            result = await handler.invoke(
+              { name: 'agent', type: 'agent', endpoint: '', healthPath: '', enabled: true } as any,
+              step.action,
+              params,
+            );
+          } else {
+            // Get executor name for external executors
+            const executorName = await this.getExecutorByType(
+              step.executorType,
+              step.executorName,
+            );
+
+            this.logger.log(
+              `Executing step ${step.id}: ${step.name} with executor ${executorName}`,
+            );
+
+            // Invoke executor
+            result = await this.executorsService.invoke(
+              executorName,
+              step.action,
+              params,
+            );
+          }
 
           if (!result.success) {
             stepResults.push({

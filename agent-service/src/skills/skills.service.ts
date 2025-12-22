@@ -1,8 +1,9 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import * as yaml from 'js-yaml';
 import { ExecutorsService } from '../executors/executors.service';
+import { ExecutorTypesService } from '../executor-types/executor-types.service';
 import { SkillConfig, SmartFetchConfig, SmartFetchResult } from './interfaces/skill.interface';
 import { SmartFetchDto, UpdateSkillConfigDto } from './dto/smart-fetch.dto';
 import {
@@ -23,7 +24,7 @@ const DEFAULT_PROMPT = `请根据以下网页内容生成一份结构化的 Mark
 {{content}}`;
 
 @Injectable()
-export class SkillsService {
+export class SkillsService implements OnModuleInit {
   private readonly logger = new Logger(SkillsService.name);
   private config: SkillConfig & { skills?: SkillDefinition[] };
   private readonly configPath: string;
@@ -31,9 +32,15 @@ export class SkillsService {
   constructor(
     private readonly executorsService: ExecutorsService,
     private readonly skillExecutorService: SkillExecutorService,
+    private readonly executorTypesService: ExecutorTypesService,
   ) {
     this.configPath = join(process.cwd(), 'config', 'skills.yaml');
     this.loadConfig();
+  }
+
+  onModuleInit() {
+    // Inject self into ExecutorTypesService for AgentHandler
+    this.executorTypesService.setSkillsService(this);
   }
 
   private loadConfig() {
@@ -77,6 +84,11 @@ export class SkillsService {
 
   getConfig(): SkillConfig {
     return this.config;
+  }
+
+  reloadConfig(): void {
+    this.loadConfig();
+    this.logger.log('Skills config reloaded');
   }
 
   getSmartFetchConfig(): SmartFetchConfig {

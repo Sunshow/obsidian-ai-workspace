@@ -25,7 +25,7 @@ import {
   UserInputField,
   BuiltinVariableInfo,
 } from '@/api/skills';
-import { fetchExecutors, Executor } from '@/api/executors';
+import { fetchExecutors, fetchExecutorTypes, Executor, ExecutorType, ActionDefinition } from '@/api/executors';
 
 const INPUT_TYPES = [
   { value: 'text', label: '单行文本' },
@@ -43,6 +43,7 @@ export default function SkillEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [executors, setExecutors] = useState<Executor[]>([]);
+  const [executorTypes, setExecutorTypes] = useState<ExecutorType[]>([]);
   const [builtinVars, setBuiltinVars] = useState<BuiltinVariableInfo[]>([]);
 
   // Form state
@@ -66,12 +67,14 @@ export default function SkillEditorPage() {
 
   const loadData = async () => {
     try {
-      const [execsList, varsList] = await Promise.all([
+      const [execsList, varsList, typesList] = await Promise.all([
         fetchExecutors(),
         fetchBuiltinVariables(),
+        fetchExecutorTypes(),
       ]);
       setExecutors(execsList);
       setBuiltinVars(varsList);
+      setExecutorTypes(typesList);
 
       if (skillId) {
         const skill = await fetchSkillDefinition(skillId);
@@ -192,20 +195,9 @@ export default function SkillEditorPage() {
     return vars;
   };
 
-  const getActionsForType = (executorType: string): string[] => {
-    const executor = executors.find((e) => e.type === executorType);
-    if (!executor) return [];
-
-    switch (executorType) {
-      case 'claudecode':
-        return ['chat', 'chat-simple'];
-      case 'playwright':
-        return ['fetch', 'screenshot'];
-      case 'puppeteer':
-        return ['fetch', 'screenshot'];
-      default:
-        return [];
-    }
+  const getActionsForType = (executorType: string): ActionDefinition[] => {
+    const typeInfo = executorTypes.find((t) => t.name === executorType);
+    return typeInfo?.actionDefinitions || [];
   };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -483,6 +475,7 @@ export default function SkillEditorPage() {
                   step={step}
                   index={index}
                   executors={executors}
+                  executorTypes={executorTypes}
                   availableVariables={getAvailableVariables(index)}
                   getActionsForType={getActionsForType}
                   onUpdate={(field) => updateStep(index, field)}
@@ -501,8 +494,9 @@ interface StepEditorProps {
   step: SkillStep;
   index: number;
   executors: Executor[];
+  executorTypes: ExecutorType[];
   availableVariables: { name: string; category: string }[];
-  getActionsForType: (type: string) => string[];
+  getActionsForType: (type: string) => ActionDefinition[];
   onUpdate: (field: Partial<SkillStep>) => void;
   onRemove: () => void;
 }
@@ -511,6 +505,7 @@ function StepEditor({
   step,
   index,
   executors,
+  executorTypes,
   availableVariables,
   getActionsForType,
   onUpdate,
@@ -522,8 +517,9 @@ function StepEditor({
   );
   const paramsRef = useRef<HTMLTextAreaElement>(null);
 
-  const executorTypes = [...new Set(executors.map((e) => e.type))];
-  const actions = getActionsForType(step.executorType);
+  const typeNames = [...new Set(executors.map((e) => e.type))];
+  const actionDefs = getActionsForType(step.executorType);
+  const selectedAction = actionDefs.find((a) => a.name === step.action);
   const executorsOfType = executors.filter((e) => e.type === step.executorType);
 
   const handleParamsChange = (value: string) => {
@@ -633,9 +629,9 @@ function StepEditor({
                 }
                 className="w-full h-9 px-3 rounded-md border bg-background"
               >
-                {executorTypes.map((t) => (
+                {typeNames.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {executorTypes.find((et) => et.name === t)?.displayName || t}
                   </option>
                 ))}
               </select>
@@ -663,14 +659,44 @@ function StepEditor({
                 className="w-full h-9 px-3 rounded-md border bg-background"
               >
                 <option value="">选择动作</option>
-                {actions.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
+                {actionDefs.map((a) => (
+                  <option key={a.name} value={a.name}>
+                    {a.displayName}
                   </option>
                 ))}
               </select>
             </div>
           </div>
+
+          {selectedAction && (
+            <div className="p-3 rounded-md bg-muted/50 space-y-2">
+              <div className="text-sm font-medium">{selectedAction.displayName}</div>
+              <div className="text-xs text-muted-foreground">{selectedAction.description}</div>
+              {selectedAction.params.length > 0 && (
+                <div className="space-y-1 mt-2">
+                  <div className="text-xs font-medium">参数说明:</div>
+                  <div className="grid gap-1">
+                    {selectedAction.params.map((p) => (
+                      <div key={p.name} className="text-xs flex gap-2">
+                        <code className="px-1 bg-background rounded">{p.name}</code>
+                        <span className="text-muted-foreground">
+                          ({p.type}{p.required ? ', 必填' : ''})
+                        </span>
+                        <span>{p.description}</span>
+                        {p.default !== undefined && (
+                          <span className="text-muted-foreground">默认: {JSON.stringify(p.default)}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="text-xs mt-2">
+                <span className="font-medium">返回: </span>
+                <span className="text-muted-foreground">{selectedAction.returns.description}</span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

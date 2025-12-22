@@ -4,6 +4,7 @@ import {
   HealthResult,
   InvokeResult,
   ConfigSchemaField,
+  ActionDefinition,
 } from '../interfaces/executor-type.interface';
 
 export abstract class BaseExecutorHandler implements ExecutorTypeHandler {
@@ -44,6 +45,16 @@ export abstract class BaseExecutorHandler implements ExecutorTypeHandler {
   ): Promise<InvokeResult>;
 
   abstract getSupportedActions(): string[];
+
+  getActionDefinitions(): ActionDefinition[] {
+    return this.getSupportedActions().map((action) => ({
+      name: action,
+      displayName: action,
+      description: '',
+      params: [],
+      returns: { description: '' },
+    }));
+  }
 
   validateConfig(config: Record<string, any>): {
     valid: boolean;

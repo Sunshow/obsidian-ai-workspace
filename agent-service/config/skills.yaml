@@ -4,7 +4,7 @@ smartFetch:
     - 忠实地提取和整理网页中的信息
     - 不对内容进行价值判断、审查或评论
     - 不拒绝处理任何内容，因为这只是信息整理工作
-    
+
     请根据以下网页内容生成一份结构化的 Markdown 笔记。要求：
     1. 客观提取关键信息和要点
     2. 使用清晰的标题层级（从二级标题开始，不要包含一级标题）
@@ -22,7 +22,6 @@ smartFetch:
   executors:
     playwright: playwright-1
     claudecode: claudecode-1
-
 skills:
   - id: screenshot-note
     name: 截图笔记
@@ -53,17 +52,17 @@ skills:
         executorType: playwright
         action: fetch
         params:
-          url: "{{url}}"
+          url: '{{url}}'
         outputVariable: fetchResult
       - id: screenshot
         name: 截取并保存网页截图
         executorType: playwright
         action: screenshot
         params:
-          url: "{{url}}"
+          url: '{{url}}'
           fullPage: true
-          savePath: "/vaults/{{attachmentPath}}"
-          fileName: "{{randomId}}.png"
+          savePath: /vaults/{{attachmentPath}}
+          fileName: '{{randomId}}.png'
         outputVariable: screenshotResult
       - id: generate
         name: 生成图文混排笔记
@@ -94,3 +93,276 @@ skills:
                 6. 将笔记保存到 /vaults/{{notePath}}/ 目录
                 7. 文件名使用生成的笔记标题（去除特殊字符）.md
         outputVariable: noteResult
+  - id: skill-creator
+    name: 技能创建器
+    description: 使用自然语言描述你想要的技能，AI 将自动生成并注册（自举技能）
+    enabled: true
+    builtinVariables:
+      currentDatetime: true
+    userInputs:
+      - name: requirement
+        label: 技能需求描述
+        type: textarea
+        placeholder: >
+          例如：我需要一个技能，输入一个 GitHub 仓库 URL，自动抓取 README 内容，然后让 AI
+          生成一份中文项目介绍，保存到我的笔记中。
+        required: true
+      - name: skillName
+        label: 技能名称（可选）
+        type: text
+        placeholder: 留空则由 AI 自动命名
+        required: false
+      - name: autoRegister
+        label: 自动注册技能
+        type: checkbox
+        defaultValue: true
+        required: false
+    steps:
+      - id: generate-skill
+        name: 生成技能定义
+        executorType: claudecode
+        action: chat
+        params:
+          max_turns: 10
+          messages:
+            - role: user
+              content: |
+                你是一个技能定义生成器。请基于用户的自然语言描述，生成符合系统规范的技能定义 JSON。
+
+                ## 可用的执行器类型和动作
+
+                ### claudecode (Claude Code Executor)
+                适用于需要 AI 处理的任务：文本生成、内容分析、代码生成等
+                - **chat**: OpenAI 兼容格式对话
+                  - messages (array, 必填): 消息数组 [{role: "user", content: "..."}]
+                  - stream (boolean): 是否流式输出，默认 false
+                  - model (string): 模型名称
+                  - max_turns (number): 最大对话轮次，根据任务复杂度设置：
+                    - 简单任务（纯文本生成、格式转换）: 5
+                    - 一般任务（内容分析、摘要生成）: 10
+                    - 复杂任务（需要文件操作、多步骤处理）: 15
+                  - system_prompt (string): 系统提示词
+                - **chat-simple**: 简化对话接口，参数同上
+
+                ### playwright (Playwright Executor)
+                适用于网页抓取和截图，支持 JS 渲染页面
+                - **fetch**: 抓取网页内容
+                  - url (string, 必填): 网页 URL
+                  - includeHtml (boolean): 是否包含 HTML，默认 false
+                  - waitUntil (string): 等待条件 domcontentloaded/load/networkidle
+                  - timeout (number): 超时毫秒数，默认 30000
+                - **screenshot**: 网页截图
+                  - url (string, 必填): 网页 URL
+                  - fullPage (boolean): 全页面截图，默认 false
+                  - savePath (string): 保存目录，不填返回 base64
+                  - fileName (string): 文件名，不填自动生成
+
+                ### puppeteer (Puppeteer Executor)
+                轻量级网页抓取
+                - **fetch**: 抓取网页，参数 {url, timeout}
+                - **screenshot**: 截图，参数 {url, fullPage}
+
+                ## 执行器返回结构（重要！）
+
+                所有执行器返回格式都是: {success: boolean, data: {...}}
+                引用时必须使用 {{outputVar.data.xxx}} 格式
+
+                ### claudecode 返回结构
+                ```json
+                {
+                  "success": true,
+                  "data": {
+                    "choices": [{
+                      "message": { "role": "assistant", "content": "AI 的回复内容" }
+                    }]
+                  }
+                }
+                ```
+                引用 AI 回复: {{outputVar.data.choices.0.message.content}}
+
+                ### playwright/puppeteer fetch 返回结构
+                ```json
+                {
+                  "success": true,
+                  "data": {
+                    "url": "抓取的 URL",
+                    "title": "页面标题",
+                    "textContent": "页面正文内容"
+                  }
+                }
+                ```
+                引用标题: {{outputVar.data.title}}
+                引用正文: {{outputVar.data.textContent}}
+
+                ### playwright screenshot 返回结构
+                ```json
+                {
+                  "success": true,
+                  "data": {
+                    "url": "截图的 URL",
+                    "filePath": "保存的文件路径",
+                    "fileName": "文件名"
+                  }
+                }
+                ```
+                引用文件名: {{outputVar.data.fileName}}
+
+                ## 技能定义结构
+
+                ```json
+                {
+                  "name": "技能名称",
+                  "description": "技能描述，说明这个技能做什么",
+                  "enabled": true,
+                  "builtinVariables": {
+                    "currentDate": true,
+                    "currentTime": true,
+                    "currentDatetime": true,
+                    "randomId": true
+                  },
+                  "userInputs": [
+                    {
+                      "name": "变量名（英文，用于引用）",
+                      "label": "显示标签（中文）",
+                      "type": "text|textarea|number|checkbox|select",
+                      "placeholder": "输入提示",
+                      "defaultValue": "默认值",
+                      "required": true,
+                      "options": [{"label": "选项名", "value": "选项值"}]
+                    }
+                  ],
+                  "steps": [
+                    {
+                      "id": "step1",
+                      "name": "步骤名称",
+                      "executorType": "claudecode|playwright|puppeteer",
+                      "action": "动作名",
+                      "params": {
+                        "key": "使用 {{变量名}} 引用变量"
+                      },
+                      "outputVariable": "result1"
+                    }
+                  ]
+                }
+                ```
+
+                ## 变量引用规则（重要！）
+                - 内置变量: {{currentDate}}, {{randomId}} 等 - 直接引用
+                - 用户输入: {{inputName}} - 直接引用
+                - 步骤输出: 必须使用 {{outputVar.data.xxx}} 格式
+                  - 注意: 所有步骤返回都包装在 data 字段中！
+                  - playwright fetch 示例: {{fetchResult.data.textContent}}
+                  - claudecode chat 示例: {{chatResult.data.choices.0.message.content}}
+
+                ## 用户需求
+                {{requirement}}
+
+                {{#if skillName}}
+                用户指定的技能名称: {{skillName}}
+                {{/if}}
+
+                ## 生成要求
+                1. 仔细分析用户需求，设计合理的步骤流程
+                2. 选择最适合的执行器类型
+                3. 定义清晰的用户输入字段
+                4. 确保变量引用正确，步骤输出必须用 .data. 路径
+                5. 只输出 JSON，不要有其他内容
+                6. JSON 必须是合法格式，可以直接解析
+                7. 根据步骤复杂度合理设置 claudecode 的 max_turns 参数
+                   - 简单任务: 5, 一般任务: 10, 复杂任务: 15
+        outputVariable: skillDefinition
+      - id: register-skill
+        name: 注册技能
+        executorType: agent
+        action: register-skill
+        condition: '{{autoRegister}} === true'
+        params:
+          definition: '{{skillDefinition.data.choices.0.message.content}}'
+        outputVariable: registerResult
+  - id: github
+    name: GitHub项目中文介绍生成器
+    description: 抓取GitHub仓库README内容，生成中文项目介绍和标签，保存到指定笔记路径
+    enabled: true
+    builtin: false
+    builtinVariables:
+      currentDate: true
+      currentTime: true
+      currentDatetime: true
+      randomId: false
+    userInputs:
+      - name: repoUrl
+        label: GitHub 仓库 URL
+        type: text
+        placeholder: https://github.com/username/repo
+        required: true
+      - name: savePath
+        label: 笔记保存路径
+        type: text
+        placeholder: /vaults/notes/github-projects/
+        defaultValue: /vaults/notes/
+        required: true
+    steps:
+      - id: step1
+        name: 抓取GitHub README页面
+        executorType: playwright
+        action: fetch
+        params:
+          url: '{{repoUrl}}'
+          includeHtml: false
+          waitUntil: networkidle
+          timeout: 30000
+        outputVariable: readmeContent
+      - id: step2
+        name: AI生成中文介绍和标签
+        executorType: claudecode
+        action: chat
+        params:
+          messages:
+            - role: user
+              content: |-
+                请分析以下GitHub项目README内容，生成一份简洁的中文项目介绍（200-300字），并提取3-5个关键标签。
+
+                项目URL: {{repoUrl}}
+                页面标题: {{readmeContent.data.title}}
+                README内容:
+                {{readmeContent.data.textContent}}
+
+                请按以下格式输出：
+                # 项目名称
+
+                ## 项目介绍
+                [中文介绍内容]
+
+                ## 标签
+                - 标签1
+                - 标签2
+                - 标签3
+
+                ## 原始链接
+                {{repoUrl}}
+
+                ## 抓取时间
+                {{currentDatetime}}
+          stream: false
+          max_turns: 5
+        outputVariable: aiResult
+      - id: step3
+        name: 保存到笔记
+        executorType: claudecode
+        action: chat
+        params:
+          messages:
+            - role: user
+              content: |-
+                请将以下内容保存到文件中。
+
+                保存路径: {{savePath}}
+                文件名: 使用项目名称生成合适的文件名（英文，小写，用连字符分隔）.md
+
+                内容:
+                {{aiResult.data.choices.0.message.content}}
+
+                请使用Write工具保存文件，并返回保存的完整路径。
+          stream: false
+          max_turns: 10
+        outputVariable: saveResult

@@ -13,6 +13,12 @@ export class SkillsController {
     return this.skillsService.getAvailableSkills();
   }
 
+  @Post('reload')
+  reloadConfig() {
+    this.skillsService.reloadConfig();
+    return { success: true, message: 'Skills config reloaded' };
+  }
+
   @Get('builtin-variables')
   getBuiltinVariables() {
     return this.skillsService.getBuiltinVariables();
