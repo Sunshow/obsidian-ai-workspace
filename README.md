@@ -1,6 +1,8 @@
 # Obsidian AI Workspace
 
-一个基于 Docker 的微服务解决方案，将 Obsidian 桌面应用与 AI Agent 执行器集成。
+AI 原生的智能工作空间。通过集成 AI Agent 和多种执行器，为 Obsidian 带来无限扩展可能。
+
+实际上，本项目不仅限于 Obsidian —— 它可以服务于任何基于目录管理的笔记系统，甚至不限于笔记场景。得益于强大的 Claude Code 集成，任何需要 AI 增强的工作流都能在此落地。
 
 ## 功能特性
 
@@ -34,24 +36,24 @@ docker compose up -d --build
 
 #### 完整版 (allinone)
 
-包含 Obsidian 桌面应用 + 所有执行器：
+包含 Obsidian 桌面应用 + 所有执行器。启动后可通过 http://localhost:3000 访问网页版 Obsidian，首次使用需手动将 Vault 目录指向 `/vaults` 打开。
 
 ```bash
 cd deploy/allinone
 cp .env.example .env
-# 编辑 .env 文件
+# 编辑 .env 文件，配置 ANTHROPIC_AUTH_TOKEN（API Key）、ANTHROPIC_BASE_URL（API 地址）、CLAUDE_DEFAULT_MODEL（默认模型）等
 
 docker compose up -d
 ```
 
 #### 无界面版 (headless)
 
-仅 Agent 服务和执行器，不含 Obsidian：
+仅 Agent 服务和执行器，不含 Obsidian 桌面应用。适用于已有本地 Obsidian 或仅需 AI 执行器能力的场景。
 
 ```bash
 cd deploy/headless
 cp .env.example .env
-# 编辑 .env 文件
+# 编辑 .env 文件，配置 ANTHROPIC_AUTH_TOKEN（API Key）、ANTHROPIC_BASE_URL（API 地址）、CLAUDE_DEFAULT_MODEL（默认模型）等
 
 docker compose up -d
 ```
@@ -112,6 +114,16 @@ docker compose up -d
 - [x] Claude Code Executor
 - [x] Playwright Executor
 - [ ] 更多 AI Agent 集成
+
+## 致谢
+
+本项目的实现得益于以下优秀的项目和服务：
+
+- [Obsidian](https://obsidian.md/) - 强大的本地优先知识管理和笔记应用
+- [Claude Code](https://github.com/anthropics/claude-code) - Anthropic 官方的 AI 编程助手 CLI 工具
+- [Playwright](https://playwright.dev/) - Microsoft 开源的跨浏览器自动化测试框架
+- [linuxserver/obsidian](https://github.com/linuxserver/docker-obsidian) - LinuxServer.io 提供的 Obsidian Docker 镜像
+- [jacoblincool/playwright-docker](https://github.com/JacobLinCool/playwright-docker) - 支持多架构的 Playwright Docker 镜像
 
 ## 许可证
 
