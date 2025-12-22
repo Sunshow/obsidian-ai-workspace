@@ -1,7 +1,7 @@
 services:
   # Agent Service - Executor Manager with WebUI
   agent-service:
-    image: sunshow/obsidian-ai-agent-service:latest
+    image: sunshow/obsidian-agent-service:latest
     container_name: agent-service
     restart: unless-stopped
     ports:
@@ -32,7 +32,7 @@ services:
 
   # Claude Code CLI HTTP API
   claude-executor:
-    image: sunshow/obsidian-ai-claude-executor:latest
+    image: sunshow/obsidian-claude-executor:latest
     container_name: claude-executor
     restart: unless-stopped
     ports:
