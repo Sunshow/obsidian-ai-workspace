@@ -158,11 +158,6 @@ skills:
                   - savePath (string): 保存目录，不填返回 base64
                   - fileName (string): 文件名，不填自动生成
 
-                ### puppeteer (Puppeteer Executor)
-                轻量级网页抓取
-                - **fetch**: 抓取网页，参数 {url, timeout}
-                - **screenshot**: 截图，参数 {url, fullPage}
-
                 ## 执行器返回结构（重要！）
 
                 所有执行器返回格式都是: {success: boolean, data: {...}}
@@ -181,7 +176,7 @@ skills:
                 ```
                 引用 AI 回复: {{outputVar.data.choices.0.message.content}}
 
-                ### playwright/puppeteer fetch 返回结构
+                ### playwright fetch 返回结构
                 ```json
                 {
                   "success": true,
@@ -236,7 +231,7 @@ skills:
                     {
                       "id": "step1",
                       "name": "步骤名称",
-                      "executorType": "claudecode|playwright|puppeteer",
+                      "executorType": "claudecode|playwright",
                       "action": "动作名",
                       "params": {
                         "key": "使用 {{变量名}} 引用变量"
