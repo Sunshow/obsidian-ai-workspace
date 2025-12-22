@@ -271,6 +271,10 @@ skills:
                 6. JSON 必须是合法格式，可以直接解析
                 7. 根据步骤复杂度合理设置 claudecode 的 max_turns 参数
                    - 简单任务: 5, 一般任务: 10, 复杂任务: 15
+                8. 生成笔记类技能时，遵循 Obsidian 规范：
+                   - 使用一级标题（#）作为文件名
+                   - 笔记正文从二级标题（##）开始，不要在正文中包含一级标题
+                   - 文件名去除特殊字符，使用下划线或短横线连接
         outputVariable: skillDefinition
       - id: register-skill
         name: 注册技能
