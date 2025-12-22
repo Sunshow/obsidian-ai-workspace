@@ -6,6 +6,7 @@ import {
 } from '../interfaces/skill-definition.interface';
 
 export class CreateSkillDto {
+  id?: string;
   name: string;
   description: string;
   icon?: string;

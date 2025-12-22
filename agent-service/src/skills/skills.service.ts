@@ -290,11 +290,19 @@ export class SkillsService implements OnModuleInit {
       this.config.skills = [];
     }
 
-    // Generate ID from name
-    const id = dto.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
+    // Use provided id if valid, otherwise generate from name
+    let id = dto.id;
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      id = dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+    
+    // If still no valid id (e.g., Chinese name), generate a random one
+    if (!id || id.trim() === '') {
+      id = `skill-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    }
 
     // Check for duplicate ID
     if (this.config.skills.some((s) => s.id === id)) {

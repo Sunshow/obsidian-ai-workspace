@@ -110,6 +110,24 @@ export class AgentHandler extends BaseExecutorHandler {
             skillDef = definition;
           }
 
+          // Ensure skill has a valid id
+          if (!skillDef.id || skillDef.id.trim() === '') {
+            // Try to generate from name first
+            if (skillDef.name) {
+              const generatedId = skillDef.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+              if (generatedId) {
+                skillDef.id = generatedId;
+              }
+            }
+            // If still no valid id, generate a random one
+            if (!skillDef.id || skillDef.id.trim() === '') {
+              skillDef.id = `skill-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+            }
+          }
+
           const result = this.skillsService.createSkill(skillDef);
           return {
             success: true,

@@ -35,8 +35,6 @@ services:
     image: sunshow/obsidian-claude-executor:latest
     container_name: claude-executor
     restart: unless-stopped
-    ports:
-      - "3002:3002"
     volumes:
       - ./vaults:/vaults
     environment:
@@ -50,8 +48,6 @@ services:
     image: jacoblincool/playwright:chromium-light-server
     container_name: playwright-executor
     restart: unless-stopped
-    ports:
-      - "53333:53333"
     environment:
       - BROWSER_PORT=53333
       - BROWSER_WS_ENDPOINT=/playwright

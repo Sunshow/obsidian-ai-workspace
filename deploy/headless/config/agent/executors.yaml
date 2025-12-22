@@ -1,0 +1,17 @@
+executors:
+  - name: claudecode-1
+    type: claudecode
+    endpoint: http://claude-executor:3002
+    healthPath: /health
+    enabled: true
+    description: Claude Code CLI Executor
+    typeConfig:
+      model: claude-sonnet-4-5-20250929
+  - name: playwright-1
+    type: playwright
+    endpoint: ws://playwright-executor:53333/playwright
+    healthPath: /
+    enabled: true
+    description: Playwright Browser Executor (ARM compatible)
+    typeConfig:
+      timeout: 30000

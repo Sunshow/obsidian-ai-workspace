@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle, Play } from 'lucide-react';
+import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle, Play, Code, FileText } from 'lucide-react';
 import {
   fetchSmartFetchConfig,
   updateSmartFetchConfig,
@@ -406,6 +407,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<SkillExecutionResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRawOutput, setShowRawOutput] = useState(false);
 
   useEffect(() => {
     fetchSkillDefinition(skillId)
@@ -423,6 +425,29 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
       .catch((err) => console.error('Failed to load skill definition:', err))
       .finally(() => setLoading(false));
   }, [skillId]);
+
+  // Reset showRawOutput when result changes
+  useEffect(() => {
+    setShowRawOutput(false);
+  }, [result]);
+
+  // Extract content from finalOutput for markdown rendering
+  const extractContent = (output: any): string | null => {
+    if (!output) return null;
+    // Try claudecode format: data.choices[0].message.content
+    if (output?.data?.choices?.[0]?.message?.content) {
+      return output.data.choices[0].message.content;
+    }
+    // Try direct content
+    if (output?.data?.content) {
+      return output.data.content;
+    }
+    // Try string
+    if (typeof output === 'string') {
+      return output;
+    }
+    return null;
+  };
 
   const handleExecute = async () => {
     // Validate required fields
@@ -621,12 +646,46 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
             {/* Final Output */}
             {result.finalOutput && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">最终输出</Label>
-                <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[400px]">
-                  {typeof result.finalOutput === 'string'
-                    ? result.finalOutput
-                    : JSON.stringify(result.finalOutput, null, 2)}
-                </pre>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">最终输出</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowRawOutput(!showRawOutput)}
+                    className="h-7 px-2 text-xs"
+                  >
+                    {showRawOutput ? (
+                      <>
+                        <FileText className="mr-1 h-3 w-3" />
+                        渲染视图
+                      </>
+                    ) : (
+                      <>
+                        <Code className="mr-1 h-3 w-3" />
+                        原始输出
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {showRawOutput ? (
+                  <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[400px]">
+                    {typeof result.finalOutput === 'string'
+                      ? result.finalOutput
+                      : JSON.stringify(result.finalOutput, null, 2)}
+                  </pre>
+                ) : (
+                  <div className="prose prose-sm dark:prose-invert max-w-none bg-muted p-4 rounded-md overflow-auto max-h-[400px]">
+                    {extractContent(result.finalOutput) ? (
+                      <ReactMarkdown>{extractContent(result.finalOutput)!}</ReactMarkdown>
+                    ) : (
+                      <pre className="whitespace-pre-wrap text-sm">
+                        {typeof result.finalOutput === 'string'
+                          ? result.finalOutput
+                          : JSON.stringify(result.finalOutput, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
