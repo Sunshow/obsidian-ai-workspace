@@ -4,12 +4,47 @@ AI 原生的智能工作空间。通过集成 AI Agent 和多种执行器，为 
 
 实际上，本项目不仅限于 Obsidian —— 它可以服务于任何基于目录管理的笔记系统，甚至不限于笔记场景。得益于强大的 Claude Code 集成，任何需要 AI 增强的工作流都能在此落地。
 
+![截图预览](snapshot1.png)
+
 ## 功能特性
 
 - **Agent Service** - NestJS 执行器管理器 + WebUI（端口 8000）
 - **Obsidian 桌面应用** - 通过 noVNC 提供 Web 访问（端口 3000）
 - **Claude Code Executor** - Claude Code CLI HTTP API 封装（端口 3002）
 - **Playwright Executor** - 网页抓取服务（端口 53333）
+
+## 核心功能：技能系统
+
+技能系统是本项目的核心引擎，通过多步骤工作流串联不同执行器完成复杂任务。
+
+### 技能创建器（自举机制）
+
+**无需手动编写配置文件**，只需用自然语言描述你的需求，技能创建器会自动生成并注册技能。
+
+例如，你可以这样描述：
+
+> 我需要一个技能，输入一个 GitHub 仓库 URL，自动抓取 README 内容，然后让 AI 生成一份中文项目介绍，保存到我的笔记中。要支持配置笔记的保存目录。
+
+系统会自动：
+1. 分析需求，确定所需的执行器和步骤
+2. 生成包含用户输入（仓库 URL、保存目录）的技能定义
+3. 通过内置 `agent` 执行器一键注册到系统
+
+这就是**自举机制**：技能可以创建技能，实现能力的自我扩展。
+
+### 技能定义结构
+
+技能由以下部分组成：
+
+- **用户输入 (userInputs)** - 定义技能执行前需要用户提供的参数
+- **内置变量 (builtinVariables)** - 如当前日期、随机 ID 等
+- **执行步骤 (steps)** - 按顺序执行的动作链，每个步骤可引用前序步骤的输出
+
+### 示例场景
+
+- **网页剪藏** - 抓取网页内容 → AI 提炼摘要 → 保存为 Markdown 笔记
+- **GitHub 项目介绍** - 抓取 README → 生成中文介绍和标签 → 归档到笔记库
+- **截图笔记** - 网页截图 + 内容提取 → 生成图文混排笔记
 
 ## 快速开始
 
@@ -36,7 +71,9 @@ docker compose up -d --build
 
 #### 完整版 (allinone)
 
-包含 Obsidian 桌面应用 + 所有执行器。启动后可通过 http://localhost:3000 访问网页版 Obsidian，首次使用需手动将 Vault 目录指向 `/vaults` 打开。
+包含 Obsidian 桌面应用 + 所有执行器。启动后：
+- 通过 http://localhost:8000 访问 Agent Service WebUI，管理执行器和使用技能
+- 通过 http://localhost:3000 访问网页版 Obsidian，首次使用需手动将 Vault 目录指向 `/vaults` 打开
 
 ```bash
 cd deploy/allinone
@@ -50,6 +87,8 @@ docker compose up -d
 
 仅 Agent 服务和执行器，不含 Obsidian 桌面应用。适用于已有本地 Obsidian 或仅需 AI 执行器能力的场景。
 
+启动后通过 http://localhost:8000 访问 Agent Service WebUI。
+
 ```bash
 cd deploy/headless
 cp .env.example .env
@@ -62,8 +101,8 @@ docker compose up -d
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                       Agent Service (:8000)                      │
-│              NestJS - Executor Manager + WebUI                   │
+│                       Agent Service (:8000)                     │
+│              NestJS - Executor Manager + WebUI                  │
 └────────────────────────────┬────────────────────────────────────┘
                              │ manages/monitors
         ┌────────────────────┼────────────────────┐
