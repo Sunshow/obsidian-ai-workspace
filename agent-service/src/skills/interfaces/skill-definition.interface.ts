@@ -54,6 +54,7 @@ export interface SkillDefinition {
   icon?: string;
   enabled: boolean;
   builtin?: boolean;
+  reserved?: boolean;
   builtinVariables: BuiltinVariables;
   userInputs: UserInputField[];
   steps: SkillStep[];

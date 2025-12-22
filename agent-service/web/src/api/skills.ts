@@ -4,6 +4,7 @@ export interface Skill {
   description: string;
   endpoint: string;
   builtin?: boolean;
+  reserved?: boolean;
   enabled?: boolean;
 }
 
@@ -91,6 +92,7 @@ export interface SkillDefinition {
   icon?: string;
   enabled: boolean;
   builtin?: boolean;
+  reserved?: boolean;
   builtinVariables: BuiltinVariables;
   userInputs: UserInputField[];
   steps: SkillStep[];

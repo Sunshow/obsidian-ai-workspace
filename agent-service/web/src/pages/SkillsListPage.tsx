@@ -61,8 +61,8 @@ export default function SkillsListPage() {
     }
   };
 
-  const builtinSkills = skills.filter((s) => s.builtin);
-  const customSkills = skills.filter((s) => !s.builtin);
+  const builtinSkills = skills.filter((s) => s.builtin || s.reserved);
+  const customSkills = skills.filter((s) => !s.builtin && !s.reserved);
 
   if (loading) {
     return (

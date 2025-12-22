@@ -268,6 +268,7 @@ export class SkillsService implements OnModuleInit {
       description: skill.description,
       endpoint: `/api/skills/${skill.id}/execute`,
       builtin: false,
+      reserved: skill.reserved,
       enabled: skill.enabled,
     }));
 
@@ -347,12 +348,17 @@ export class SkillsService implements OnModuleInit {
 
   deleteSkill(id: string): void {
     const skills = this.config.skills || [];
-    const index = skills.findIndex((s) => s.id === id);
+    const skill = skills.find((s) => s.id === id);
 
-    if (index === -1) {
+    if (!skill) {
       throw new NotFoundException(`Skill "${id}" not found`);
     }
 
+    if (skill.reserved) {
+      throw new BadRequestException(`技能 "${id}" 是保留技能，不可删除`);
+    }
+
+    const index = skills.indexOf(skill);
     skills.splice(index, 1);
     this.saveConfig();
 

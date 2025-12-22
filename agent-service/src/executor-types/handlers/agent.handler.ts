@@ -137,6 +137,16 @@ export class AgentHandler extends BaseExecutorHandler {
               error: 'id is required',
             };
           }
+          
+          // Check if skill is reserved
+          const skill = this.skillsService.getSkillById(id);
+          if (skill?.reserved) {
+            return {
+              success: false,
+              error: `技能 "${id}" 是保留技能，不可删除`,
+            };
+          }
+          
           this.skillsService.deleteSkill(id);
           return {
             success: true,

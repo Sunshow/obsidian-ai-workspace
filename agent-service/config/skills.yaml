@@ -97,6 +97,7 @@ skills:
     name: 技能创建器
     description: 使用自然语言描述你想要的技能，AI 将自动生成并注册（自举技能）
     enabled: true
+    reserved: true
     builtinVariables:
       currentDatetime: true
     userInputs:
