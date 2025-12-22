@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Obsidian AI Workspace - A Docker-based microservices solution with four independent containers:
-- **Agent Service** - NestJS executor manager with WebUI (port 8000)
+Obsidian AI Workspace - A Docker-based microservices solution integrating Obsidian with AI Agent executors:
+- **Agent Service** - NestJS executor manager with WebUI, Skills system (port 8000)
 - **Obsidian** - Desktop app via noVNC (optional, port 3000)
 - **Claude Code Executor** - Claude Code CLI HTTP API (port 3002)
-- **Puppeteer Executor** - Web scraping HTTP API (port 3003)
+- **Playwright Executor** - Web scraping with Playwright (port 53333)
 
 ## Build and Run Commands
 
@@ -16,33 +16,39 @@ Obsidian AI Workspace - A Docker-based microservices solution with four independ
 # Build and start all containers
 docker compose up -d --build
 
-# Start specific services only
-docker compose up -d agent-service claude-executor puppeteer-executor
+# Start specific services (without Obsidian desktop)
+docker compose up -d agent-service claude-executor playwright-executor
 
 # Rebuild without cache
 docker compose build --no-cache && docker compose up -d
 
 # View logs
-docker compose logs -f
+docker compose logs -f [service-name]
 
 # Stop
 docker compose down
 ```
+
+### Production Deployment
+
+Two deployment options available in `deploy/`:
+- `deploy/allinone/` - Full stack with Obsidian desktop
+- `deploy/headless/` - Agent service and executors only
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                       Agent Service (:8000)                      │
-│              NestJS - Executor Manager + WebUI                   │
+│              NestJS - Executor Manager + WebUI + Skills          │
 └────────────────────────────┬────────────────────────────────────┘
-                             │ manages/monitors
+                             │ manages/monitors/invokes
         ┌────────────────────┼────────────────────┐
         ▼                    ▼                    ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│    Obsidian     │  │ ClaudeCode      │  │  Puppeteer      │
+│    Obsidian     │  │ Claude Code     │  │  Playwright     │
 │  (linuxserver)  │  │   Executor      │  │   Executor      │
-│   :3000/:3001   │  │     :3002       │  │     :3003       │
+│     :3000       │  │     :3002       │  │    :53333       │
 └────────┬────────┘  └────────┬────────┘  └────────┬────────┘
          │                    │                    │
          └────────────────────┴────────────────────┘
@@ -50,23 +56,32 @@ docker compose down
                         ./vaults (shared)
 ```
 
+## Service Details
+
 ### Agent Service (`agent-service/`)
 
-NestJS application managing executor instances with health monitoring.
+NestJS application managing executors and providing a skills workflow engine.
 
-**Tech Stack:** NestJS + TypeScript + js-yaml
+**Tech Stack:** NestJS + TypeScript + js-yaml + playwright-core
 
-**Endpoints:**
-- `GET /health` - Health check
-- `GET /api/executors` - List all executors
-- `POST /api/executors` - Register new executor
-- `PUT /api/executors/:name` - Update executor
-- `DELETE /api/executors/:name` - Remove executor
-- `POST /api/executors/:name/check` - Check single executor health
-- `POST /api/executors/:name/toggle` - Enable/disable executor
-- `POST /api/executors/check-all` - Check all executors health
+**Key Modules:**
+- `src/executors/` - Executor CRUD and health monitoring
+- `src/executor-types/` - Handler implementations (claudecode, playwright, puppeteer, agent)
+- `src/skills/` - Workflow engine with YAML-defined skills
 
-**Configuration:** `agent-service/config/executors.yaml`
+**API Endpoints:**
+- `GET /api/executors` - List executors
+- `POST /api/executors/:name/invoke` - Invoke executor action
+- `POST /api/executors/check-all` - Health check all
+- `GET /api/executor-types` - List supported executor types
+- `GET /api/skills` - List available skills
+- `POST /api/skills/:id/execute` - Execute a skill with user inputs
+- `GET /api/skills/definitions` - Get all skill definitions
+- `POST /api/skills/smart-fetch` - Built-in web clip workflow
+
+**Configuration:**
+- `config/executors.yaml` - Executor instances configuration
+- `config/skills.yaml` - Skills definitions and smartFetch config
 
 **Development:**
 ```bash
@@ -74,70 +89,101 @@ cd agent-service
 npm install
 npm run start:dev   # Watch mode
 npm run build       # Build
-npm run start:prod  # Production mode
 npm run lint        # ESLint
 npm run format      # Prettier
 ```
 
 ### Claude Code Executor (`claude-executor/`)
 
-Express server wrapping Claude Code CLI. Spawns `claude` CLI process for each request.
+Express server wrapping Claude Code CLI. Spawns `claude` CLI process per request.
 
 **Endpoints:**
 - `GET /health` - Health check
-- `POST /v1/chat/completions` - OpenAI-compatible chat API (streaming SSE)
+- `POST /v1/chat/completions` - OpenAI-compatible API (streaming SSE)
 - `POST /api/chat` - Simplified chat endpoint
 
-**Key implementation:** `src/routes/chat.ts` - spawns Claude CLI with `--output-format stream-json`
+**Key implementation:** `src/routes/chat.ts` - spawns Claude CLI with `--output-format stream-json --dangerously-skip-permissions`
 
 **Development:**
 ```bash
 cd claude-executor
 npm install
 npm run dev     # ts-node development mode
-npm run build   # Build TypeScript
+npm run build   # TypeScript build
 npm start       # Production mode
 ```
 
-### Puppeteer Executor (`puppeteer-executor/`)
+### Playwright Executor
 
-Express server providing web scraping using Puppeteer + Readability.
+Uses pre-built image `jacoblincool/playwright:chromium-light-server` exposing WebSocket endpoint at `/playwright`.
 
-**Endpoints:**
-- `GET /health` - Health check
-- `POST /api/fetch` - Fetch and parse web page content (uses @mozilla/readability)
-- `POST /api/fetch/screenshot` - Take page screenshot (returns base64)
+Agent Service connects via `playwright-core` library to perform:
+- `fetch` - Page content extraction with @mozilla/readability
+- `screenshot` - Full page or viewport screenshots
 
-**Development:**
-```bash
-cd puppeteer-executor
-npm install
-npm run dev     # ts-node development mode
-npm run build   # Build TypeScript
-npm start       # Production mode
+Handler implementation: `agent-service/src/executor-types/handlers/playwright.handler.ts`
+
+## Skills System
+
+The skills system allows defining multi-step workflows combining different executors.
+
+**Skill Definition Structure (in `config/skills.yaml`):**
+```yaml
+skills:
+  - id: unique-id
+    name: Display Name
+    description: What this skill does
+    enabled: true
+    builtinVariables:
+      currentDate: true
+      randomId: true
+    userInputs:
+      - name: url
+        label: Input Label
+        type: text|textarea|number|checkbox|select
+        required: true
+    steps:
+      - id: step1
+        executorType: playwright|claudecode|agent
+        action: fetch|screenshot|chat|register-skill
+        params:
+          url: '{{url}}'
+        outputVariable: result1
+      - id: step2
+        executorType: claudecode
+        action: chat
+        params:
+          messages:
+            - role: user
+              content: 'Process: {{result1.data.textContent}}'
 ```
+
+**Variable Reference:**
+- User inputs: `{{inputName}}`
+- Built-in: `{{currentDate}}`, `{{currentDatetime}}`, `{{randomId}}`
+- Step outputs: `{{outputVar.data.xxx}}` (all returns wrapped in `data` field)
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Copy `.env.example` to `.env`:
 
-| Variable | Purpose |
-|----------|---------|
-| `ANTHROPIC_AUTH_TOKEN` | Claude API key (used by claude-executor) |
-| `ANTHROPIC_BASE_URL` | Optional API base URL override |
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `ANTHROPIC_AUTH_TOKEN` | Claude API key | - |
+| `ANTHROPIC_BASE_URL` | API base URL (optional) | - |
+| `CLAUDE_DEFAULT_MODEL` | Default model | claude-sonnet-4-5-20250929 |
 
 ## Port Mapping
 
 | Port | Service |
 |------|---------|
-| 8000 | Agent Service (executor manager + WebUI) |
+| 8000 | Agent Service (WebUI + API) |
 | 3000 | Obsidian noVNC web interface |
-| 3001 | Obsidian reserved |
 | 3002 | Claude Code Executor API |
-| 3003 | Puppeteer Executor API |
+| 53333 | Playwright WebSocket server |
 
 ## Volume Mounts
 
-- `./vaults` - Shared vault directory (mounted to all containers as `/vaults`)
+- `./vaults` - Shared vault directory (mounted as `/vaults` in all containers)
 - `./config` - Obsidian configuration
-- `./agent-service/config` - Executor configuration (YAML)
+- `./agent-service/config` - Executor and skills YAML configuration
