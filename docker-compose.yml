@@ -13,7 +13,7 @@ services:
       - AGENT_PORT=8000
     depends_on:
       - claude-executor
-      - puppeteer-executor
+#      - puppeteer-executor
 
   # Obsidian Desktop (可选，直接使用官方镜像)
   obsidian:
