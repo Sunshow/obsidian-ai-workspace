@@ -21,8 +21,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^16.5.0",
-    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.11.0",
+    "streamdown": "^1.6.10",
     "tailwind-merge": "^2.2.0"
   },
   "devDependencies": {

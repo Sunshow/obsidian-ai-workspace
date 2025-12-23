@@ -11,6 +11,7 @@ services:
       - ./config/agent:/app/config
     environment:
       - AGENT_PORT=8000
+      - TZ=Asia/Shanghai
     depends_on:
       - claude-executor
 
@@ -26,6 +27,7 @@ services:
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
       - AGENT_PORT=3002
       - CLAUDE_DEFAULT_MODEL=${CLAUDE_DEFAULT_MODEL:-claude-sonnet-4-5-20250929}
+      - TZ=Asia/Shanghai
 
   # Playwright Browser Server (ARM compatible)
   playwright-executor:
@@ -36,3 +38,4 @@ services:
       - BROWSER_PORT=53333
       - BROWSER_WS_ENDPOINT=/playwright
       - BROWSER_HOST=0.0.0.0
+      - TZ=Asia/Shanghai

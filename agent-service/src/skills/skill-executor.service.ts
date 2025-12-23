@@ -18,22 +18,41 @@ export class SkillExecutorService {
     private readonly executorTypesService: ExecutorTypesService,
   ) {}
 
+  private formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private formatLocalTime(date: Date): string {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
+  private formatLocalDatetime(date: Date): string {
+    return `${this.formatLocalDate(date)} ${this.formatLocalTime(date)}`;
+  }
+
   getBuiltinVariables(): BuiltinVariableInfo[] {
+    const now = new Date();
     return [
       {
         name: 'currentDate',
         description: '当前日期',
-        example: new Date().toISOString().split('T')[0],
+        example: this.formatLocalDate(now),
       },
       {
         name: 'currentTime',
         description: '当前时间',
-        example: new Date().toTimeString().split(' ')[0],
+        example: this.formatLocalTime(now),
       },
       {
         name: 'currentDatetime',
         description: '当前日期时间',
-        example: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        example: this.formatLocalDatetime(now),
       },
       {
         name: 'randomId',
@@ -50,16 +69,13 @@ export class SkillExecutorService {
     const now = new Date();
 
     if (builtinVariables.currentDate) {
-      values.currentDate = now.toISOString().split('T')[0];
+      values.currentDate = this.formatLocalDate(now);
     }
     if (builtinVariables.currentTime) {
-      values.currentTime = now.toTimeString().split(' ')[0];
+      values.currentTime = this.formatLocalTime(now);
     }
     if (builtinVariables.currentDatetime) {
-      values.currentDatetime = now
-        .toISOString()
-        .replace('T', ' ')
-        .substring(0, 19);
+      values.currentDatetime = this.formatLocalDatetime(now);
     }
     if (builtinVariables.randomId) {
       values.randomId = Math.random().toString(36).substring(2, 10);

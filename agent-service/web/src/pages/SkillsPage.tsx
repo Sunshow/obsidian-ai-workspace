@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
+import { Streamdown } from 'streamdown';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -703,7 +703,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                 ) : (
                   <div className="prose prose-sm dark:prose-invert max-w-none bg-muted p-4 rounded-md overflow-auto max-h-[400px]">
                     {extractContent(result.finalOutput) ? (
-                      <ReactMarkdown>{extractContent(result.finalOutput)!}</ReactMarkdown>
+                      <Streamdown>{extractContent(result.finalOutput)!}</Streamdown>
                     ) : (
                       <pre className="whitespace-pre-wrap text-sm">
                         {typeof result.finalOutput === 'string'
