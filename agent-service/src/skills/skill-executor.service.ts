@@ -239,6 +239,16 @@ export class SkillExecutorService {
           // Replace variables in params
           const params = this.replaceVariables(step.params || {}, context);
 
+          // 对于 claudecode 执行器，传递步骤级别的 model 配置
+          if (step.executorType === 'claudecode') {
+            if (skill.id === 'skill-creator' && !step.model) {
+              // 技能创建器使用专用环境变量
+              params.model = process.env.SKILL_CREATOR_MODEL || 'claude-opus-4-5-20251101';
+            } else if (step.model) {
+              params.model = step.model;
+            }
+          }
+
           let result: any;
 
           // Check if this is an agent (built-in) executor type

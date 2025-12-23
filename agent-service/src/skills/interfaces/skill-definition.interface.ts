@@ -41,6 +41,7 @@ export interface SkillStep {
   params: Record<string, any>;
   outputVariable?: string;
   condition?: string;
+  model?: string; // 仅对 claudecode 执行器生效，覆盖默认模型
 }
 
 export interface SkillOutput {

@@ -11,6 +11,7 @@ services:
       - ./config/agent:/app/config
     environment:
       - AGENT_PORT=8000
+      - SKILL_CREATOR_MODEL=${SKILL_CREATOR_MODEL:-claude-opus-4-5-20251101}
       - TZ=Asia/Shanghai
     depends_on:
       - claude-executor

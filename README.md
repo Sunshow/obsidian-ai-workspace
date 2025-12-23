@@ -39,6 +39,7 @@ AI 原生的智能工作空间。通过集成 AI Agent 和多种执行器，为 
 - **用户输入 (userInputs)** - 定义技能执行前需要用户提供的参数
 - **内置变量 (builtinVariables)** - 如当前日期、随机 ID 等
 - **执行步骤 (steps)** - 按顺序执行的动作链，每个步骤可引用前序步骤的输出
+- **模型选择** - 对于 Claude Code 执行器步骤，可单独指定使用的模型（预设 Opus 4.5 / Sonnet 4.5，也支持自定义）
 
 ### 示例场景
 
@@ -129,6 +130,7 @@ docker compose up -d
 | ANTHROPIC_AUTH_TOKEN | Claude API Key | 空 |
 | ANTHROPIC_BASE_URL | API Base URL（可选） | 空 |
 | CLAUDE_DEFAULT_MODEL | 默认模型 | claude-sonnet-4-5-20250929 |
+| SKILL_CREATOR_MODEL | 技能创建器使用的模型 | claude-opus-4-5-20251101 |
 | PUID | 用户 ID | 1000 |
 | PGID | 组 ID | 1000 |
 | TZ | 时区 | Asia/Shanghai |

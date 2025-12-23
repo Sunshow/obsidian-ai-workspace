@@ -36,6 +36,12 @@ const INPUT_TYPES = [
   { value: 'select', label: '下拉选择' },
 ];
 
+const CLAUDE_MODELS = [
+  { value: '', label: '默认（使用环境变量配置）' },
+  { value: 'claude-opus-4-5-20251101', label: 'Claude Opus 4.5' },
+  { value: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5' },
+];
+
 export default function SkillEditorPage() {
   const { t } = useTranslation();
   const { skillId } = useParams<{ skillId: string }>();
@@ -518,6 +524,10 @@ function StepEditor({
     JSON.stringify(step.params, null, 2)
   );
   const paramsRef = useRef<HTMLTextAreaElement>(null);
+  
+  // 判断当前是否为自定义模型模式
+  const isCustomModel = step.model !== undefined && !CLAUDE_MODELS.some(m => m.value === step.model);
+  const [customModelMode, setCustomModelMode] = useState(isCustomModel);
 
   const typeNames = [...new Set(executors.map((e) => e.type))];
   const actionDefs = getActionsForType(step.executorType);
@@ -669,6 +679,43 @@ function StepEditor({
               </select>
             </div>
           </div>
+
+          {/* Model selector for claudecode executor */}
+          {step.executorType === 'claudecode' && (
+            <div className="space-y-1">
+              <Label className="text-xs">模型 (可选)</Label>
+              <div className="flex gap-2">
+                <select
+                  value={customModelMode ? '__custom__' : (step.model || '')}
+                  onChange={(e) => {
+                    if (e.target.value === '__custom__') {
+                      setCustomModelMode(true);
+                      onUpdate({ model: '' });
+                    } else {
+                      setCustomModelMode(false);
+                      onUpdate({ model: e.target.value || undefined });
+                    }
+                  }}
+                  className="flex-1 h-9 px-3 rounded-md border bg-background"
+                >
+                  {CLAUDE_MODELS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                  <option value="__custom__">自定义模型</option>
+                </select>
+                {customModelMode && (
+                  <Input
+                    value={step.model || ''}
+                    onChange={(e) => onUpdate({ model: e.target.value || undefined })}
+                    placeholder="输入自定义模型名称"
+                    className="flex-1 font-mono text-xs"
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
           {selectedAction && (
             <div className="p-3 rounded-md bg-muted/50 space-y-2">
