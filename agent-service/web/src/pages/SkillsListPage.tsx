@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +13,16 @@ import {
   Skill,
   SkillDefinition,
 } from '@/api/skills';
+import { getLocalizedSkillName, getLocalizedSkillDescription } from '@/hooks/useLocalizedSkill';
 
 export default function SkillsListPage() {
+  const { t, i18n } = useTranslation();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [, setDefinitions] = useState<SkillDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const navigate = useNavigate();
+  const lang = i18n.language;
 
   useEffect(() => {
     loadData();
@@ -40,7 +44,7 @@ export default function SkillsListPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这个技能吗？')) return;
+    if (!confirm(t('skills.deleteConfirm'))) return;
     try {
       await deleteSkillDefinition(id);
       await loadData();
@@ -76,24 +80,24 @@ export default function SkillsListPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Skills</h1>
-          <p className="text-muted-foreground">管理和创建自动化技能</p>
+          <h1 className="text-2xl font-bold">{t('skills.title')}</h1>
+          <p className="text-muted-foreground">{t('skills.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleReload} disabled={reloading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${reloading ? 'animate-spin' : ''}`} />
-            刷新配置
+            {t('skills.reloadConfig')}
           </Button>
           <Button onClick={() => navigate('/skills/new')}>
             <Plus className="mr-2 h-4 w-4" />
-            创建技能
+            {t('skills.createSkill')}
           </Button>
         </div>
       </div>
 
       {/* Builtin Skills */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">内置技能</h2>
+        <h2 className="text-lg font-semibold">{t('skills.builtinSkills')}</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {builtinSkills.map((skill) => (
             <Card key={skill.id} className="hover:shadow-md transition-shadow">
@@ -101,15 +105,15 @@ export default function SkillsListPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Zap className="h-4 w-4 text-yellow-500" />
-                    {skill.name}
+                    {getLocalizedSkillName(skill, lang)}
                   </CardTitle>
                   <Badge variant="secondary">
                     <Lock className="h-3 w-3 mr-1" />
-                    内置
+                    {t('skills.builtin')}
                   </Badge>
                 </div>
                 <CardDescription className="text-sm">
-                  {skill.description}
+                  {getLocalizedSkillDescription(skill, lang)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -120,7 +124,7 @@ export default function SkillsListPage() {
                   onClick={() => navigate(`/skills/${skill.id}`)}
                 >
                   <Play className="mr-2 h-4 w-4" />
-                  运行
+                  {t('common.run')}
                 </Button>
               </CardContent>
             </Card>
@@ -130,15 +134,15 @@ export default function SkillsListPage() {
 
       {/* Custom Skills */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">自定义技能</h2>
+        <h2 className="text-lg font-semibold">{t('skills.customSkills')}</h2>
         {customSkills.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Zap className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">暂无自定义技能</p>
+              <p className="text-muted-foreground mb-4">{t('skills.noCustomSkills')}</p>
               <Button onClick={() => navigate('/skills/new')}>
                 <Plus className="mr-2 h-4 w-4" />
-                创建第一个技能
+                {t('skills.createFirst')}
               </Button>
             </CardContent>
           </Card>
@@ -151,14 +155,14 @@ export default function SkillsListPage() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base flex items-center gap-2">
                         <Zap className="h-4 w-4 text-primary" />
-                        {skill.name}
+                        {getLocalizedSkillName(skill, lang)}
                       </CardTitle>
                       <Badge variant={skill.enabled ? 'default' : 'secondary'}>
-                        {skill.enabled ? '已启用' : '已禁用'}
+                        {skill.enabled ? t('common.enabled') : t('common.disabled')}
                       </Badge>
                     </div>
                     <CardDescription className="text-sm">
-                      {skill.description}
+                      {getLocalizedSkillDescription(skill, lang)}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -171,7 +175,7 @@ export default function SkillsListPage() {
                         disabled={!skill.enabled}
                       >
                         <Play className="mr-2 h-4 w-4" />
-                        运行
+                        {t('common.run')}
                       </Button>
                       <Button
                         variant="ghost"

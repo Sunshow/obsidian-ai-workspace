@@ -270,6 +270,7 @@ export class SkillsService implements OnModuleInit {
       builtin: false,
       reserved: skill.reserved,
       enabled: skill.enabled,
+      i18n: skill.i18n,
     }));
 
     return [...builtinSkills, ...customSkills];

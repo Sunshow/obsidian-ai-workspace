@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Executor, fetchExecutors, checkAllHealth } from '@/api/executors';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Cpu, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,7 +49,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -56,19 +58,19 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">System overview and status</p>
+          <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
+          <p className="text-muted-foreground">{t('dashboard.subtitle')}</p>
         </div>
         <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('common.refresh')}
         </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Executors</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.totalExecutors')}</CardTitle>
             <Cpu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -78,7 +80,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Healthy</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.healthy')}</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -88,7 +90,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Unhealthy</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.unhealthy')}</CardTitle>
             <XCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
@@ -98,7 +100,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Unknown/Disabled</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.unknownDisabled')}</CardTitle>
             <HelpCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -111,11 +113,11 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Executor Status</CardTitle>
+          <CardTitle>{t('dashboard.executorStatus')}</CardTitle>
         </CardHeader>
         <CardContent>
           {executors.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No executors configured</p>
+            <p className="text-muted-foreground text-center py-4">{t('dashboard.noExecutors')}</p>
           ) : (
             <div className="space-y-2">
               {executors.map((executor) => (
@@ -137,13 +139,13 @@ export default function DashboardPage() {
                       </span>
                     )}
                     {!executor.enabled ? (
-                      <Badge variant="secondary">Disabled</Badge>
+                      <Badge variant="secondary">{t('status.disabled')}</Badge>
                     ) : executor.status === 'healthy' ? (
-                      <Badge variant="success">Healthy</Badge>
+                      <Badge variant="success">{t('status.healthy')}</Badge>
                     ) : executor.status === 'unhealthy' ? (
-                      <Badge variant="error">Unhealthy</Badge>
+                      <Badge variant="error">{t('status.unhealthy')}</Badge>
                     ) : (
-                      <Badge variant="warning">Unknown</Badge>
+                      <Badge variant="warning">{t('status.unknown')}</Badge>
                     )}
                   </div>
                 </div>

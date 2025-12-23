@@ -22,8 +22,10 @@ export interface UserInputOption {
 export interface UserInputField {
   name: string;
   label: string;
+  labelEn?: string;
   type: 'text' | 'textarea' | 'select' | 'number' | 'checkbox';
   placeholder?: string;
+  placeholderEn?: string;
   defaultValue?: any;
   required?: boolean;
   options?: UserInputOption[];
@@ -47,6 +49,11 @@ export interface SkillOutput {
   showInUI?: boolean;
 }
 
+export interface SkillI18n {
+  name?: string;
+  description?: string;
+}
+
 export interface SkillDefinition {
   id: string;
   name: string;
@@ -55,6 +62,11 @@ export interface SkillDefinition {
   enabled: boolean;
   builtin?: boolean;
   reserved?: boolean;
+  i18n?: {
+    zh?: SkillI18n;
+    en?: SkillI18n;
+    [key: string]: SkillI18n | undefined;
+  };
   builtinVariables: BuiltinVariables;
   userInputs: UserInputField[];
   steps: SkillStep[];

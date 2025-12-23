@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Cpu,
@@ -12,23 +13,38 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchSkills, Skill } from '@/api/skills';
+import { getLocalizedSkillName } from '@/hooks/useLocalizedSkill';
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/executors', label: 'Executors', icon: Cpu },
-  { path: '/obsidian', label: 'Obsidian', icon: BookOpen },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { path: '/executors', labelKey: 'nav.executors', icon: Cpu },
+  { path: '/obsidian', labelKey: 'nav.obsidian', icon: BookOpen },
+  { path: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 export function Sidebar() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillsExpanded, setSkillsExpanded] = useState(true);
   const location = useLocation();
 
+  // 当路径变化时刷新技能列表（包括从技能创建页面返回）
   useEffect(() => {
     fetchSkills()
       .then(setSkills)
       .catch((err) => console.error('Failed to load skills:', err));
+  }, [location.pathname]);
+
+  // 监听自定义事件刷新技能列表
+  useEffect(() => {
+    const handleSkillsUpdated = () => {
+      fetchSkills()
+        .then(setSkills)
+        .catch((err) => console.error('Failed to load skills:', err));
+    };
+    window.addEventListener('skills-updated', handleSkillsUpdated);
+    return () => window.removeEventListener('skills-updated', handleSkillsUpdated);
   }, []);
 
   const isSkillsActive = location.pathname.startsWith('/skills');
@@ -39,7 +55,7 @@ export function Sidebar() {
         <h1 className="text-lg font-bold">Agent Service</h1>
       </div>
       <nav className="flex-1 p-2 space-y-1">
-        {navItems.slice(0, 3).map(({ path, label, icon: Icon }) => (
+        {navItems.slice(0, 3).map(({ path, labelKey, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}
@@ -53,7 +69,7 @@ export function Sidebar() {
             }
           >
             <Icon className="h-4 w-4" />
-            {label}
+            {t(labelKey)}
           </NavLink>
         ))}
 
@@ -69,7 +85,7 @@ export function Sidebar() {
             )}
           >
             <Zap className="h-4 w-4" />
-            <span className="flex-1 text-left">Skills</span>
+            <span className="flex-1 text-left">{t('nav.skills')}</span>
             {skillsExpanded ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
@@ -91,7 +107,7 @@ export function Sidebar() {
                 }
               >
                 <List className="h-3 w-3" />
-                管理技能
+                {t('nav.manageSkills')}
               </NavLink>
               {skills.map((skill) => (
                 <NavLink
@@ -106,14 +122,14 @@ export function Sidebar() {
                     )
                   }
                 >
-                  {skill.name}
+                  {getLocalizedSkillName(skill, lang)}
                 </NavLink>
               ))}
             </div>
           )}
         </div>
 
-        {navItems.slice(3).map(({ path, label, icon: Icon }) => (
+        {navItems.slice(3).map(({ path, labelKey, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}
@@ -127,7 +143,7 @@ export function Sidebar() {
             }
           >
             <Icon className="h-4 w-4" />
-            {label}
+            {t(labelKey)}
           </NavLink>
         ))}
       </nav>

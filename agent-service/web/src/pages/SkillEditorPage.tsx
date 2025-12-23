@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ const INPUT_TYPES = [
 ];
 
 export default function SkillEditorPage() {
+  const { t } = useTranslation();
   const { skillId } = useParams<{ skillId: string }>();
   const navigate = useNavigate();
   const isEditing = !!skillId;
@@ -96,7 +98,7 @@ export default function SkillEditorPage() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      alert('请输入技能名称');
+      alert(t('skillEditor.saveNameRequired'));
       return;
     }
 
@@ -119,7 +121,7 @@ export default function SkillEditorPage() {
       navigate('/skills');
     } catch (error) {
       console.error('Failed to save skill:', error);
-      alert('保存失败');
+      alert(t('skillEditor.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -220,10 +222,10 @@ export default function SkillEditorPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">
-            {isEditing ? '编辑技能' : '创建技能'}
+            {isEditing ? t('skillEditor.editTitle') : t('skillEditor.createTitle')}
           </h1>
           <p className="text-muted-foreground">
-            {isEditing ? '修改技能配置' : '配置一个新的自动化技能'}
+            {isEditing ? t('skillEditor.editSubtitle') : t('skillEditor.createSubtitle')}
           </p>
         </div>
         <Button onClick={handleSave} disabled={saving}>
@@ -232,28 +234,28 @@ export default function SkillEditorPage() {
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          保存
+          {t('common.save')}
         </Button>
       </div>
 
       {/* Basic Info */}
       <Card>
         <CardHeader>
-          <CardTitle>基本信息</CardTitle>
+          <CardTitle>{t('skillEditor.basicInfo')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>技能名称 *</Label>
+              <Label>{t('skillEditor.skillName')} *</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="例如：Smart Summarizer"
+                placeholder={t('skillEditor.skillNamePlaceholder')}
               />
             </div>
             <div className="flex items-center gap-4 pt-6">
               <Switch checked={enabled} onCheckedChange={setEnabled} />
-              <Label>启用技能</Label>
+              <Label>{t('skillEditor.enableSkill')}</Label>
             </div>
           </div>
           <div className="space-y-2">
@@ -261,7 +263,7 @@ export default function SkillEditorPage() {
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="简要描述技能的功能"
+              placeholder={t('skillEditor.descriptionPlaceholder')}
             />
           </div>
         </CardContent>
@@ -280,13 +282,13 @@ export default function SkillEditorPage() {
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              内置变量
+              {t('skillEditor.builtinVariables')}
             </CardTitle>
             <Badge variant="outline">
-              {Object.values(builtinVariables).filter(Boolean).length} 已启用
+              {Object.values(builtinVariables).filter(Boolean).length} {t('skillEditor.builtinVarsEnabled')}
             </Badge>
           </div>
-          <CardDescription>选择要在提示词中使用的系统变量</CardDescription>
+          <CardDescription>{t('skillEditor.builtinVarsDesc')}</CardDescription>
         </CardHeader>
         {expandedSections.builtinVars && (
           <CardContent>
@@ -335,7 +337,7 @@ export default function SkillEditorPage() {
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              用户输入参数
+              {t('skillEditor.userInputParams')}
             </CardTitle>
             <Button
               variant="outline"
@@ -346,16 +348,16 @@ export default function SkillEditorPage() {
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
-              添加参数
+              {t('skillEditor.addParam')}
             </Button>
           </div>
-          <CardDescription>定义用户运行技能时需要填写的参数</CardDescription>
+          <CardDescription>{t('skillEditor.userInputParamsDesc')}</CardDescription>
         </CardHeader>
         {expandedSections.userInputs && (
           <CardContent className="space-y-4">
             {userInputs.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">
-                暂无用户输入参数
+                {t('skillEditor.noParams')}
               </p>
             ) : (
               userInputs.map((input, index) => (
@@ -444,7 +446,7 @@ export default function SkillEditorPage() {
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-              执行步骤
+              {t('skillEditor.executionSteps')}
             </CardTitle>
             <Button
               variant="outline"
@@ -455,18 +457,18 @@ export default function SkillEditorPage() {
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
-              添加步骤
+              {t('skillEditor.addStep')}
             </Button>
           </div>
           <CardDescription>
-            配置技能执行的步骤，每个步骤调用一个执行器
+            {t('skillEditor.executionStepsDesc')}
           </CardDescription>
         </CardHeader>
         {expandedSections.steps && (
           <CardContent className="space-y-4">
             {steps.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">
-                暂无执行步骤
+                {t('skillEditor.noSteps')}
               </p>
             ) : (
               steps.map((step, index) => (

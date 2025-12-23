@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Executor,
   fetchExecutors,
@@ -32,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { RefreshCw, Plus, Trash2, Activity } from 'lucide-react';
 
 export default function ExecutorsPage() {
+  const { t } = useTranslation();
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,7 +96,7 @@ export default function ExecutorsPage() {
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete executor "${name}"?`)) return;
+    if (!confirm(t('executors.deleteConfirm', { name }))) return;
     try {
       await deleteExecutor(name);
       setExecutors((prev) => prev.filter((e) => e.name !== name));
@@ -125,22 +127,22 @@ export default function ExecutorsPage() {
 
   const getStatusBadge = (executor: Executor) => {
     if (!executor.enabled) {
-      return <Badge variant="secondary">Disabled</Badge>;
+      return <Badge variant="secondary">{t('status.disabled')}</Badge>;
     }
     switch (executor.status) {
       case 'healthy':
-        return <Badge variant="success">Healthy</Badge>;
+        return <Badge variant="success">{t('status.healthy')}</Badge>;
       case 'unhealthy':
-        return <Badge variant="error">Unhealthy</Badge>;
+        return <Badge variant="error">{t('status.unhealthy')}</Badge>;
       default:
-        return <Badge variant="warning">Unknown</Badge>;
+        return <Badge variant="warning">{t('status.unknown')}</Badge>;
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -149,9 +151,9 @@ export default function ExecutorsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Executors</h1>
+          <h1 className="text-2xl font-bold">{t('executors.title')}</h1>
           <p className="text-muted-foreground">
-            Manage and monitor your executors
+            {t('executors.subtitle')}
           </p>
         </div>
           <div className="flex gap-2">
@@ -163,84 +165,84 @@ export default function ExecutorsPage() {
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`}
               />
-              Refresh All
+              {t('common.refreshAll')}
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Executor
+                  {t('executors.addExecutor')}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Add New Executor</DialogTitle>
+                  <DialogTitle>{t('executors.addNew')}</DialogTitle>
                   <DialogDescription>
-                    Configure a new executor to manage
+                    {t('executors.configureNew')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name">{t('executors.form.name')}</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })
                       }
-                      placeholder="my-executor"
+                      placeholder={t('executors.form.namePlaceholder')}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="type">Type</Label>
+                    <Label htmlFor="type">{t('executors.form.type')}</Label>
                     <Input
                       id="type"
                       value={formData.type}
                       onChange={(e) =>
                         setFormData({ ...formData, type: e.target.value })
                       }
-                      placeholder="claudecode, puppeteer, etc."
+                      placeholder={t('executors.form.typePlaceholder')}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="endpoint">Endpoint</Label>
+                    <Label htmlFor="endpoint">{t('executors.form.endpoint')}</Label>
                     <Input
                       id="endpoint"
                       value={formData.endpoint}
                       onChange={(e) =>
                         setFormData({ ...formData, endpoint: e.target.value })
                       }
-                      placeholder="http://executor:3000"
+                      placeholder={t('executors.form.endpointPlaceholder')}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="healthPath">Health Path</Label>
+                    <Label htmlFor="healthPath">{t('executors.form.healthPath')}</Label>
                     <Input
                       id="healthPath"
                       value={formData.healthPath}
                       onChange={(e) =>
                         setFormData({ ...formData, healthPath: e.target.value })
                       }
-                      placeholder="/health"
+                      placeholder={t('executors.form.healthPathPlaceholder')}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">{t('executors.form.description')}</Label>
                     <Input
                       id="description"
                       value={formData.description}
                       onChange={(e) =>
                         setFormData({ ...formData, description: e.target.value })
                       }
-                      placeholder="Optional description"
+                      placeholder={t('executors.form.descriptionPlaceholder')}
                     />
                   </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
-                  <Button onClick={handleCreate}>Create</Button>
+                  <Button onClick={handleCreate}>{t('common.create')}</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -250,10 +252,10 @@ export default function ExecutorsPage() {
         {executors.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">No executors configured</p>
+              <p className="text-muted-foreground mb-4">{t('executors.noExecutors')}</p>
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Your First Executor
+                {t('executors.addFirst')}
               </Button>
             </CardContent>
           </Card>
@@ -275,7 +277,7 @@ export default function ExecutorsPage() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Endpoint: </span>
+                      <span className="text-muted-foreground">{t('executors.endpoint')}: </span>
                       <span className="font-mono text-xs">{executor.endpoint}</span>
                     </div>
                     {executor.description && (
@@ -285,7 +287,7 @@ export default function ExecutorsPage() {
                     )}
                     {executor.lastChecked && (
                       <div className="text-xs text-muted-foreground">
-                        Last checked:{' '}
+                        {t('executors.lastChecked')}:{' '}
                         {new Date(executor.lastChecked).toLocaleTimeString()}
                         {executor.responseTime !== undefined && (
                           <span className="ml-2">({executor.responseTime}ms)</span>
@@ -299,7 +301,7 @@ export default function ExecutorsPage() {
                           onCheckedChange={() => handleToggle(executor.name)}
                         />
                         <span className="text-sm text-muted-foreground">
-                          {executor.enabled ? 'Enabled' : 'Disabled'}
+                          {executor.enabled ? t('common.enabled') : t('common.disabled')}
                         </span>
                       </div>
                       <div className="flex gap-1">
@@ -307,7 +309,7 @@ export default function ExecutorsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleCheckHealth(executor.name)}
-                          title="Check health"
+                          title={t('executors.checkHealth')}
                         >
                           <Activity className="h-4 w-4" />
                         </Button>
@@ -315,7 +317,7 @@ export default function ExecutorsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(executor.name)}
-                          title="Delete"
+                          title={t('common.delete')}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

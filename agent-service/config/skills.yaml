@@ -27,22 +27,29 @@ skills:
     name: 截图笔记
     description: 抓取网页截图并生成图文混排的 Markdown 笔记
     enabled: true
+    i18n:
+      en:
+        name: Screenshot Note
+        description: Capture webpage screenshot and generate illustrated Markdown note
     builtinVariables:
       currentDate: true
       randomId: true
     userInputs:
       - name: url
         label: 网页地址
+        labelEn: Webpage URL
         type: text
         placeholder: https://example.com
         required: true
       - name: notePath
         label: 笔记保存路径
+        labelEn: Note Save Path
         type: text
         defaultValue: WebClips
         required: false
       - name: attachmentPath
         label: 附件存储路径
+        labelEn: Attachment Path
         type: text
         defaultValue: WebClips/attachments
         required: false
@@ -98,23 +105,36 @@ skills:
     description: 使用自然语言描述你想要的技能，AI 将自动生成并注册（自举技能）
     enabled: true
     reserved: true
+    i18n:
+      en:
+        name: Skill Creator
+        description: >-
+          Describe the skill you want in natural language, AI will auto-generate
+          and register it
     builtinVariables:
       currentDatetime: true
     userInputs:
       - name: requirement
         label: 技能需求描述
+        labelEn: Skill Requirement Description
         type: textarea
         placeholder: >
           例如：我需要一个技能，输入一个 GitHub 仓库 URL，自动抓取 README 内容，然后让 AI
           生成一份中文项目介绍，保存到我的笔记中。
+        placeholderEn: >
+          E.g.: I need a skill that takes a GitHub repo URL, fetches README
+          content, generates a Chinese project intro, and saves it to my notes.
         required: true
       - name: skillName
         label: 技能名称（可选）
+        labelEn: Skill Name (optional)
         type: text
         placeholder: 留空则由 AI 自动命名
+        placeholderEn: Leave empty for AI to name it
         required: false
       - name: autoRegister
         label: 自动注册技能
+        labelEn: Auto Register Skill
         type: checkbox
         defaultValue: true
         required: false
@@ -127,13 +147,17 @@ skills:
           max_turns: 10
           messages:
             - role: user
-              content: |
+              content: >
                 你是一个技能定义生成器。请基于用户的自然语言描述，生成符合系统规范的技能定义 JSON。
+
 
                 ## 可用的执行器类型和动作
 
+
                 ### claudecode (Claude Code Executor)
+
                 适用于需要 AI 处理的任务：文本生成、内容分析、代码生成等
+
                 - **chat**: OpenAI 兼容格式对话
                   - messages (array, 必填): 消息数组 [{role: "user", content: "..."}]
                   - stream (boolean): 是否流式输出，默认 false
@@ -145,8 +169,11 @@ skills:
                   - system_prompt (string): 系统提示词
                 - **chat-simple**: 简化对话接口，参数同上
 
+
                 ### playwright (Playwright Executor)
+
                 适用于网页抓取和截图，支持 JS 渲染页面
+
                 - **fetch**: 抓取网页内容
                   - url (string, 必填): 网页 URL
                   - includeHtml (boolean): 是否包含 HTML，默认 false
@@ -160,11 +187,16 @@ skills:
 
                 ## 执行器返回结构（重要！）
 
+
                 所有执行器返回格式都是: {success: boolean, data: {...}}
+
                 引用时必须使用 {{outputVar.data.xxx}} 格式
 
+
                 ### claudecode 返回结构
+
                 ```json
+
                 {
                   "success": true,
                   "data": {
@@ -173,11 +205,16 @@ skills:
                     }]
                   }
                 }
+
                 ```
+
                 引用 AI 回复: {{outputVar.data.choices.0.message.content}}
 
+
                 ### playwright fetch 返回结构
+
                 ```json
+
                 {
                   "success": true,
                   "data": {
@@ -186,12 +223,18 @@ skills:
                     "textContent": "页面正文内容"
                   }
                 }
+
                 ```
+
                 引用标题: {{outputVar.data.title}}
+
                 引用正文: {{outputVar.data.textContent}}
 
+
                 ### playwright screenshot 返回结构
+
                 ```json
+
                 {
                   "success": true,
                   "data": {
@@ -200,17 +243,28 @@ skills:
                     "fileName": "文件名"
                   }
                 }
+
                 ```
+
                 引用文件名: {{outputVar.data.fileName}}
+
 
                 ## 技能定义结构
 
+
                 ```json
+
                 {
                   "id": "技能ID（必填，英文小写，用连字符分隔，如 my-skill-name）",
-                  "name": "技能名称",
-                  "description": "技能描述，说明这个技能做什么",
+                  "name": "技能名称（中文，作为默认显示）",
+                  "description": "技能描述（中文，说明这个技能做什么）",
                   "enabled": true,
+                  "i18n": {
+                    "en": {
+                      "name": "English skill name",
+                      "description": "English description of what this skill does"
+                    }
+                  },
                   "builtinVariables": {
                     "currentDate": true,
                     "currentTime": true,
@@ -221,8 +275,10 @@ skills:
                     {
                       "name": "变量名（英文，用于引用）",
                       "label": "显示标签（中文）",
+                      "labelEn": "English label (optional)",
                       "type": "text|textarea|number|checkbox|select",
-                      "placeholder": "输入提示",
+                      "placeholder": "输入提示（中文）",
+                      "placeholderEn": "English placeholder (optional)",
                       "defaultValue": "默认值",
                       "required": true,
                       "options": [{"label": "选项名", "value": "选项值"}]
@@ -241,37 +297,59 @@ skills:
                     }
                   ]
                 }
+
                 ```
 
+
                 ## 变量引用规则（重要！）
+
                 - 内置变量: {{currentDate}}, {{randomId}} 等 - 直接引用
+
                 - 用户输入: {{inputName}} - 直接引用
+
                 - 步骤输出: 必须使用 {{outputVar.data.xxx}} 格式
                   - 注意: 所有步骤返回都包装在 data 字段中！
                   - playwright fetch 示例: {{fetchResult.data.textContent}}
                   - claudecode chat 示例: {{chatResult.data.choices.0.message.content}}
 
                 ## 用户需求
+
                 {{requirement}}
 
+
                 {{#if skillName}}
+
                 用户指定的技能名称: {{skillName}}
+
                 {{/if}}
 
+
                 ## 生成要求
+
                 1. 仔细分析用户需求，设计合理的步骤流程
+
                 2. 选择最适合的执行器类型
+
                 3. 定义清晰的用户输入字段
+
                 4. 确保变量引用正确，步骤输出必须用 .data. 路径
+
                 5. 只输出 JSON，不要有其他内容
+
                 6. JSON 必须是合法格式，可以直接解析
+
                 7. **必须包含 id 字段**，使用英文小写和连字符，如 "github-readme-generator"
+
                 8. 根据步骤复杂度合理设置 claudecode 的 max_turns 参数
                    - 简单任务: 5, 一般任务: 10, 复杂任务: 15
                 9. 生成笔记类技能时，遵循 Obsidian 规范：
                    - 使用一级标题（#）作为文件名
                    - 笔记正文从二级标题（##）开始，不要在正文中包含一级标题
                    - 文件名去除特殊字符，使用下划线或短横线连接
+                10. **多语言支持**: name 和 description 使用中文，同时在 i18n.en 中提供英文翻译
+
+                11. userInputs 的 label/placeholder 使用中文，并提供
+                labelEn/placeholderEn 英文版本
         outputVariable: skillDefinition
       - id: register-skill
         name: 注册技能
@@ -286,6 +364,12 @@ skills:
     description: 抓取GitHub仓库README内容，生成中文项目介绍和标签，保存到指定笔记路径
     enabled: true
     builtin: false
+    i18n:
+      en:
+        name: GitHub Project Intro Generator
+        description: >-
+          Fetch GitHub repo README, generate Chinese intro with tags, save to
+          notes
     builtinVariables:
       currentDate: true
       currentTime: true
@@ -294,13 +378,16 @@ skills:
     userInputs:
       - name: repoUrl
         label: GitHub 仓库 URL
+        labelEn: GitHub Repository URL
         type: text
         placeholder: https://github.com/username/repo
         required: true
       - name: savePath
         label: 笔记保存路径
+        labelEn: Note Save Path
         type: text
         placeholder: /vaults/notes/github-projects/
+        placeholderEn: /vaults/notes/github-projects/
         defaultValue: /vaults/notes/
         required: true
     steps:
@@ -373,6 +460,10 @@ skills:
     description: 每次点击生成一段温暖人心的励志鸡汤文案
     enabled: true
     builtin: false
+    i18n:
+      en:
+        name: Daily Inspiration
+        description: Generate a warm and inspiring motivational quote on each click
     builtinVariables:
       currentDate: true
       currentTime: true

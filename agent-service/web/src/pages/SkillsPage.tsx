@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,8 +21,10 @@ import {
   SkillExecutionResult,
 } from '@/api/skills';
 import { fetchExecutors, Executor } from '@/api/executors';
+import { getLocalizedSkillName, getLocalizedSkillDescription, getLocalizedUserInput } from '@/hooks/useLocalizedSkill';
 
 function SmartFetchSkill() {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SmartFetchResult | null>(null);
@@ -140,8 +143,8 @@ function SmartFetchSkill() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Smart Fetch</h1>
-          <p className="text-muted-foreground">Fetch web content and generate structured notes using AI</p>
+          <h1 className="text-2xl font-bold">{t('smartFetch.title')}</h1>
+          <p className="text-muted-foreground">{t('smartFetch.subtitle')}</p>
         </div>
         <Button variant="outline" size="icon" onClick={() => setShowSettings(!showSettings)}>
           <Settings className="h-4 w-4" />
@@ -151,25 +154,25 @@ function SmartFetchSkill() {
       {showSettings && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Smart Fetch Settings</CardTitle>
-            <CardDescription>Configure the smart fetch behavior</CardDescription>
+            <CardTitle className="text-lg">{t('smartFetch.settings')}</CardTitle>
+            <CardDescription>{t('smartFetch.settingsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Default Prompt</Label>
+              <Label>{t('smartFetch.defaultPrompt')}</Label>
               <textarea
                 className="w-full h-40 p-3 rounded-md border bg-background resize-none font-mono text-sm"
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
-                placeholder="Enter the default prompt for note generation..."
+                placeholder={t('smartFetch.promptPlaceholder')}
               />
               <p className="text-xs text-muted-foreground">
-                Use {'{{title}}'} and {'{{content}}'} as placeholders
+                {t('smartFetch.promptHint')}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Playwright Executor</Label>
+                <Label>{t('smartFetch.playwrightExecutor')}</Label>
                 <select
                   className="w-full p-2 rounded-md border bg-background"
                   value={selectedPlaywright}
@@ -183,7 +186,7 @@ function SmartFetchSkill() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>Claude Executor</Label>
+                <Label>{t('smartFetch.claudeExecutor')}</Label>
                 <select
                   className="w-full p-2 rounded-md border bg-background"
                   value={selectedClaude}
@@ -206,7 +209,7 @@ function SmartFetchSkill() {
                   onChange={(e) => setAutoGenerateNote(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="autoGenerateNote">自动生成笔记</Label>
+                <Label htmlFor="autoGenerateNote">{t('smartFetch.autoGenerateNote')}</Label>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -217,10 +220,10 @@ function SmartFetchSkill() {
                   disabled={!autoGenerateNote}
                   className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="autoCreateCategory">自动创建分类</Label>
+                <Label htmlFor="autoCreateCategory">{t('smartFetch.autoCreateCategory')}</Label>
               </div>
               <div className="flex items-center gap-2 flex-1">
-                <Label htmlFor="notePath" className="whitespace-nowrap">笔记路径</Label>
+                <Label htmlFor="notePath" className="whitespace-nowrap">{t('smartFetch.notePath')}</Label>
                 <Input
                   id="notePath"
                   value={notePath}
@@ -235,7 +238,7 @@ function SmartFetchSkill() {
           <CardFooter>
             <Button onClick={handleSaveConfig} disabled={savingConfig}>
               {savingConfig && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Settings
+              {t('smartFetch.saveSettings')}
             </Button>
           </CardFooter>
         </Card>
@@ -245,16 +248,16 @@ function SmartFetchSkill() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5" />
-            Smart Fetch
+            {t('smartFetch.title')}
           </CardTitle>
           <CardDescription>
-            Fetch web content and generate structured notes using AI
+            {t('smartFetch.subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input
-              placeholder="Enter URL to fetch..."
+              placeholder={t('smartFetch.urlPlaceholder')}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
@@ -264,12 +267,12 @@ function SmartFetchSkill() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
+                  {t('smartFetch.processing')}
                 </>
               ) : (
                 <>
                   <Bot className="mr-2 h-4 w-4" />
-                  Fetch & Generate
+                  {t('smartFetch.fetchGenerate')}
                 </>
               )}
             </Button>
@@ -295,7 +298,7 @@ function SmartFetchSkill() {
                 {result.noteSaved && result.noteSavePath && (
                   <div className="flex items-center gap-2 p-3 rounded-md bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400">
                     <CheckCircle className="h-5 w-5 flex-shrink-0" />
-                    <span className="text-sm">笔记已保存到: {result.noteSavePath}</span>
+                    <span className="text-sm">{t('smartFetch.noteSaved')}: {result.noteSavePath}</span>
                   </div>
                 )}
                 {result.warning && (
@@ -307,7 +310,7 @@ function SmartFetchSkill() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">原始抓取内容</Label>
+                      <Label className="text-sm font-medium">{t('smartFetch.originalContent')}</Label>
                       {result.originalContent && (
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy('left')}>
                           {copied === 'left' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
@@ -315,12 +318,12 @@ function SmartFetchSkill() {
                       )}
                     </div>
                     <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[500px]">
-                      {normalizeWhitespace(result.originalContent || '(无内容)')}
+                      {normalizeWhitespace(result.originalContent || t('smartFetch.noContent'))}
                     </pre>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">生成的笔记</Label>
+                      <Label className="text-sm font-medium">{t('smartFetch.generatedNote')}</Label>
                       {result.generatedNote && (
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy('right')}>
                           {copied === 'right' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
@@ -328,7 +331,7 @@ function SmartFetchSkill() {
                       )}
                     </div>
                     <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-md overflow-auto max-h-[500px]">
-                      {result.generatedNote || '(未生成笔记)'}
+                      {result.generatedNote || t('smartFetch.noNote')}
                     </pre>
                   </div>
                 </div>
@@ -344,15 +347,30 @@ function SmartFetchSkill() {
 }
 
 export default function SkillsPage() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const { skillId } = useParams<{ skillId: string }>();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadSkills = () => {
     fetchSkills()
       .then(setSkills)
       .catch((err) => console.error('Failed to load skills:', err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadSkills();
+  }, []);
+
+  // 监听技能更新事件
+  useEffect(() => {
+    const handleSkillsUpdated = () => {
+      loadSkills();
+    };
+    window.addEventListener('skills-updated', handleSkillsUpdated);
+    return () => window.removeEventListener('skills-updated', handleSkillsUpdated);
   }, []);
 
   if (loading) {
@@ -371,7 +389,7 @@ export default function SkillsPage() {
     }
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">暂无可用技能</p>
+        <p className="text-muted-foreground">{t('skills.noSkillsAvailable')}</p>
       </div>
     );
   }
@@ -388,12 +406,12 @@ export default function SkillsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">{skill.name}</h1>
-        <p className="text-muted-foreground">{skill.description}</p>
+        <h1 className="text-2xl font-bold">{getLocalizedSkillName(skill, lang)}</h1>
+        <p className="text-muted-foreground">{getLocalizedSkillDescription(skill, lang)}</p>
       </div>
       <Card>
         <CardContent className="pt-6">
-          <p className="text-muted-foreground">此技能暂无专属界面</p>
+          <p className="text-muted-foreground">{t('skillRunner.noSpecialUI')}</p>
         </CardContent>
       </Card>
     </div>
@@ -402,6 +420,8 @@ export default function SkillsPage() {
 
 // Generic runner for custom skills
 function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [definition, setDefinition] = useState<SkillDefinition | null>(null);
   const [inputs, setInputs] = useState<Record<string, any>>({});
   const [executing, setExecuting] = useState(false);
@@ -466,6 +486,10 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
     try {
       const res = await executeSkill(skillId, inputs);
       setResult(res);
+      // 如果是技能创建器执行成功，触发刷新事件
+      if (res.success && skillId === 'skill-creator') {
+        window.dispatchEvent(new CustomEvent('skills-updated'));
+      }
     } catch (error) {
       setResult({
         success: false,
@@ -494,21 +518,23 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">{skill.name}</h1>
-        <p className="text-muted-foreground">{skill.description}</p>
+        <h1 className="text-2xl font-bold">{getLocalizedSkillName(skill, lang)}</h1>
+        <p className="text-muted-foreground">{getLocalizedSkillDescription(skill, lang)}</p>
       </div>
 
       {/* Input Form */}
       <Card>
         <CardHeader>
-          <CardTitle>输入参数</CardTitle>
-          <CardDescription>填写技能执行所需的参数</CardDescription>
+          <CardTitle>{t('skillRunner.inputParams')}</CardTitle>
+          <CardDescription>{t('skillRunner.inputParamsDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {definition?.userInputs?.map((input) => (
+          {definition?.userInputs?.map((input) => {
+            const localizedInput = getLocalizedUserInput(input, lang);
+            return (
             <div key={input.name} className="space-y-2">
               <Label>
-                {input.label}
+                {localizedInput.label}
                 {input.required && <span className="text-destructive ml-1">*</span>}
               </Label>
               {input.type === 'textarea' ? (
@@ -516,7 +542,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                   className="w-full h-24 p-3 rounded-md border bg-background resize-none"
                   value={inputs[input.name] || ''}
                   onChange={(e) => updateInput(input.name, e.target.value)}
-                  placeholder={input.placeholder}
+                  placeholder={localizedInput.placeholder}
                   disabled={executing}
                 />
               ) : input.type === 'select' ? (
@@ -526,7 +552,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                   onChange={(e) => updateInput(input.name, e.target.value)}
                   disabled={executing}
                 >
-                  <option value="">请选择...</option>
+                  <option value="">{t('common.select')}...</option>
                   {input.options?.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -548,22 +574,23 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                   type="number"
                   value={inputs[input.name] || ''}
                   onChange={(e) => updateInput(input.name, Number(e.target.value))}
-                  placeholder={input.placeholder}
+                  placeholder={localizedInput.placeholder}
                   disabled={executing}
                 />
               ) : (
                 <Input
                   value={inputs[input.name] || ''}
                   onChange={(e) => updateInput(input.name, e.target.value)}
-                  placeholder={input.placeholder}
+                  placeholder={localizedInput.placeholder}
                   disabled={executing}
                 />
               )}
             </div>
-          ))}
+            );
+          })}
 
           {(!definition?.userInputs || definition.userInputs.length === 0) && (
-            <p className="text-muted-foreground text-center py-4">此技能无需输入参数</p>
+            <p className="text-muted-foreground text-center py-4">{t('skillRunner.noParamsRequired')}</p>
           )}
         </CardContent>
         <CardFooter>
@@ -571,12 +598,12 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
             {executing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                执行中...
+                {t('skillRunner.executing')}
               </>
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                执行技能
+                {t('skillRunner.executeSkill')}
               </>
             )}
           </Button>
@@ -594,14 +621,14 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                 ) : (
                   <AlertTriangle className="h-5 w-5 text-destructive" />
                 )}
-                执行结果
+                {t('skillRunner.executionResult')}
               </CardTitle>
               <Badge variant={result.success ? 'default' : 'destructive'}>
-                {result.success ? '成功' : '失败'}
+                {result.success ? t('common.success') : t('common.failed')}
               </Badge>
             </div>
             <CardDescription>
-              耗时: {(result.duration / 1000).toFixed(2)}s
+              {t('skillRunner.duration')}: {(result.duration / 1000).toFixed(2)}s
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -614,7 +641,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
             {/* Step Results */}
             {result.stepResults.length > 0 && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">执行步骤</Label>
+                <Label className="text-sm font-medium">{t('skillRunner.executionSteps')}</Label>
                 <div className="space-y-2">
                   {result.stepResults.map((step, index) => (
                     <div
@@ -647,7 +674,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
             {result.finalOutput && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">最终输出</Label>
+                  <Label className="text-sm font-medium">{t('skillRunner.finalOutput')}</Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -657,12 +684,12 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                     {showRawOutput ? (
                       <>
                         <FileText className="mr-1 h-3 w-3" />
-                        渲染视图
+                        {t('skillRunner.renderedView')}
                       </>
                     ) : (
                       <>
                         <Code className="mr-1 h-3 w-3" />
-                        原始输出
+                        {t('skillRunner.rawOutput')}
                       </>
                     )}
                   </Button>
