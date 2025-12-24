@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Sse, MessageEvent } from '@nestjs/common';
+import { Observable, map } from 'rxjs';
 import { SkillsService } from './skills.service';
 import { SmartFetchDto, UpdateSkillConfigDto } from './dto/smart-fetch.dto';
 import { CreateSkillDto, UpdateSkillDto } from './dto/create-skill.dto';
@@ -56,6 +57,29 @@ export class SkillsController {
     @Body() dto: ExecuteSkillDto,
   ) {
     return this.skillsService.executeSkill(id, dto.userInputs || {});
+  }
+
+  @Sse(':id/execute-stream')
+  executeSkillStream(
+    @Param('id') id: string,
+    @Query('userInputs') userInputsBase64?: string,
+  ): Observable<MessageEvent> {
+    // Decode userInputs from base64 query parameter
+    let userInputs: Record<string, any> = {};
+    if (userInputsBase64) {
+      try {
+        const decoded = Buffer.from(userInputsBase64, 'base64').toString('utf-8');
+        userInputs = JSON.parse(decoded);
+      } catch (e) {
+        // Invalid base64 or JSON, use empty object
+      }
+    }
+
+    return this.skillsService.executeSkillStream(id, userInputs).pipe(
+      map((event) => ({
+        data: event,
+      } as MessageEvent)),
+    );
   }
 
   @Get('config')

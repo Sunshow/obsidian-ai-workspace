@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Streamdown } from 'streamdown';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle, Play, Code, FileText, Clock, Save } from 'lucide-react';
+import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle, Play, Code, FileText, Clock, Save, Circle } from 'lucide-react';
 import {
   fetchSmartFetchConfig,
   updateSmartFetchConfig,
@@ -15,7 +15,7 @@ import {
   SmartFetchResult,
   fetchSkills,
   fetchSkillDefinition,
-  executeSkill,
+  executeSkillStream,
   saveSkillDefaultInputs,
   Skill,
   SkillDefinition,
@@ -419,6 +419,16 @@ export default function SkillsPage() {
   );
 }
 
+// Step status for real-time tracking
+interface StepStatus {
+  stepId: string;
+  stepName: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  duration?: number;
+  rawOutput?: string;
+  error?: string;
+}
+
 // Generic runner for custom skills
 function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }) {
   const { t, i18n } = useTranslation();
@@ -431,6 +441,8 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
   const [result, setResult] = useState<SkillExecutionResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRawOutput, setShowRawOutput] = useState(false);
+  const [stepStatuses, setStepStatuses] = useState<StepStatus[]>([]);
+  const cancelRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     fetchSkillDefinition(skillId)
@@ -486,29 +498,83 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
     setExecuting(true);
     setResult(null);
 
+    // Initialize step statuses from definition
+    if (definition?.steps) {
+      setStepStatuses(
+        definition.steps.map((step) => ({
+          stepId: step.id,
+          stepName: step.name,
+          status: 'pending',
+        }))
+      );
+    }
+
     // Trigger task queue refresh immediately when starting execution
     window.dispatchEvent(new CustomEvent('task-queue-refresh'));
 
-    try {
-      const res = await executeSkill(skillId, inputs);
-      setResult(res);
-      // 如果是技能创建器执行成功，触发刷新事件
-      if (res.success && skillId === 'skill-creator') {
-        window.dispatchEvent(new CustomEvent('skills-updated'));
-      }
-    } catch (error) {
-      setResult({
-        success: false,
-        skillId,
-        stepResults: [],
-        error: error instanceof Error ? error.message : 'Unknown error',
-        duration: 0,
-      });
-    } finally {
-      setExecuting(false);
-      // Trigger task queue refresh when execution completes
-      window.dispatchEvent(new CustomEvent('task-queue-refresh'));
-    }
+    // Use streaming API
+    const { cancel } = executeSkillStream(skillId, inputs, {
+      onStepStart: (event) => {
+        setStepStatuses((prev) =>
+          prev.map((s) =>
+            s.stepId === event.stepId ? { ...s, status: 'running' } : s
+          )
+        );
+      },
+      onStepComplete: (event) => {
+        setStepStatuses((prev) =>
+          prev.map((s) =>
+            s.stepId === event.stepId
+              ? {
+                  ...s,
+                  status: 'completed',
+                  duration: event.duration,
+                  rawOutput: event.rawOutput,
+                }
+              : s
+          )
+        );
+      },
+      onStepError: (event) => {
+        setStepStatuses((prev) =>
+          prev.map((s) =>
+            s.stepId === event.stepId
+              ? {
+                  ...s,
+                  status: 'failed',
+                  duration: event.duration,
+                  error: event.error,
+                }
+              : s
+          )
+        );
+      },
+      onComplete: (res) => {
+        setResult(res);
+        setExecuting(false);
+        cancelRef.current = null;
+        // 如果是技能创建器执行成功，触发刷新事件
+        if (res.success && skillId === 'skill-creator') {
+          window.dispatchEvent(new CustomEvent('skills-updated'));
+        }
+        // Trigger task queue refresh when execution completes
+        window.dispatchEvent(new CustomEvent('task-queue-refresh'));
+      },
+      onError: (error) => {
+        setResult({
+          success: false,
+          skillId,
+          stepResults: [],
+          error,
+          duration: 0,
+        });
+        setExecuting(false);
+        cancelRef.current = null;
+        window.dispatchEvent(new CustomEvent('task-queue-refresh'));
+      },
+    });
+
+    cancelRef.current = cancel;
   };
 
   const handleSaveInputs = async () => {
@@ -687,6 +753,26 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
         </CardFooter>
       </Card>
 
+      {/* Real-time Step Progress (shown during execution) */}
+      {executing && stepStatuses.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              {t('skillRunner.executionSteps')}
+            </CardTitle>
+            <CardDescription>{t('skillRunner.executingInProgress')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stepStatuses.map((step, index) => (
+                <LiveStepItem key={step.stepId} step={step} index={index} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Execution Result */}
       {result && (
         <Card>
@@ -812,6 +898,82 @@ function StepResultItem({ step, index }: { step: { stepId: string; stepName: str
           ) : (
             <AlertTriangle className="h-4 w-4 text-destructive" />
           )}
+        </div>
+      </div>
+      {expanded && hasOutput && (
+        <div className="px-3 pb-3 pt-0">
+          <pre className="whitespace-pre-wrap text-xs bg-muted p-3 rounded-md overflow-auto max-h-[300px]">
+            {step.error || step.rawOutput}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Live step item for real-time progress display
+function LiveStepItem({ step, index }: { step: StepStatus; index: number }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const hasOutput = step.rawOutput || step.error;
+
+  const getStatusIcon = () => {
+    switch (step.status) {
+      case 'pending':
+        return <Circle className="h-4 w-4 text-muted-foreground" />;
+      case 'running':
+        return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'failed':
+        return <AlertTriangle className="h-4 w-4 text-destructive" />;
+    }
+  };
+
+  const getStatusClass = () => {
+    switch (step.status) {
+      case 'pending':
+        return 'bg-muted/50 border-muted';
+      case 'running':
+        return 'bg-primary/5 border-primary/30';
+      case 'completed':
+        return 'bg-green-500/5 border-green-500/20';
+      case 'failed':
+        return 'bg-destructive/5 border-destructive/20';
+    }
+  };
+
+  const getStatusText = () => {
+    switch (step.status) {
+      case 'pending':
+        return t('skillRunner.stepPending');
+      case 'running':
+        return t('skillRunner.stepRunning');
+      case 'completed':
+        return step.duration ? `${(step.duration / 1000).toFixed(2)}s` : t('skillRunner.stepCompleted');
+      case 'failed':
+        return t('skillRunner.stepFailed');
+    }
+  };
+
+  return (
+    <div className={`rounded-md border ${getStatusClass()}`}>
+      <div
+        className={`flex items-center justify-between p-3 ${hasOutput ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+        onClick={() => hasOutput && setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{index + 1}</Badge>
+          <span>{step.stepName}</span>
+          {hasOutput && (
+            <span className="text-xs text-muted-foreground">
+              {expanded ? '▼' : '▶'}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>{getStatusText()}</span>
+          {getStatusIcon()}
         </div>
       </div>
       {expanded && hasOutput && (

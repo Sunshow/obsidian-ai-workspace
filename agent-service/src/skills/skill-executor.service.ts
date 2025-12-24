@@ -1,10 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Observable, Subject } from 'rxjs';
 import { ExecutorsService } from '../executors/executors.service';
 import { ExecutorTypesService } from '../executor-types/executor-types.service';
 import {
   SkillDefinition,
   SkillExecutionContext,
   SkillExecutionResult,
+  SkillExecutionEvent,
+  SkillStepResult,
   BuiltinVariableInfo,
   SkillStep,
 } from './interfaces/skill-definition.interface';
@@ -384,6 +387,234 @@ export class SkillExecutorService {
         error: errorMessage,
         duration: Date.now() - startTime,
       };
+    }
+  }
+
+  /**
+   * Execute skill with real-time event streaming via Observable
+   */
+  executeSkillWithEvents(
+    skill: SkillDefinition,
+    userInputValues: Record<string, any>,
+  ): Observable<SkillExecutionEvent> {
+    const subject = new Subject<SkillExecutionEvent>();
+
+    this.executeSkillAsync(skill, userInputValues, subject).then(() => {
+      subject.complete();
+    }).catch((error) => {
+      subject.error(error);
+    });
+
+    return subject.asObservable();
+  }
+
+  private async executeSkillAsync(
+    skill: SkillDefinition,
+    userInputValues: Record<string, any>,
+    subject: Subject<SkillExecutionEvent>,
+  ): Promise<void> {
+    const startTime = Date.now();
+    const stepResults: SkillStepResult[] = [];
+    const totalSteps = skill.steps.length;
+
+    this.logger.log(`Executing skill with events: ${skill.id}, steps: ${totalSteps}`);
+
+    const context: SkillExecutionContext = {
+      builtinValues: this.generateBuiltinValues(skill.builtinVariables || {}),
+      userInputValues: userInputValues || {},
+      stepOutputs: {},
+    };
+
+    try {
+      for (let stepIndex = 0; stepIndex < skill.steps.length; stepIndex++) {
+        const step = skill.steps[stepIndex];
+        const stepStartTime = Date.now();
+
+        // Emit step-start event
+        subject.next({
+          type: 'step-start',
+          stepId: step.id,
+          stepName: step.name,
+          stepIndex,
+          totalSteps,
+        });
+
+        // Check condition
+        if (!this.evaluateCondition(step.condition || '', context)) {
+          this.logger.log(`Skipping step ${step.id}: condition not met`);
+          const stepResult: SkillStepResult = {
+            stepId: step.id,
+            stepName: step.name,
+            success: true,
+            output: null,
+            duration: Date.now() - stepStartTime,
+          };
+          stepResults.push(stepResult);
+          subject.next({
+            type: 'step-complete',
+            stepId: step.id,
+            stepName: step.name,
+            stepIndex,
+            totalSteps,
+            success: true,
+            duration: stepResult.duration,
+          });
+          continue;
+        }
+
+        try {
+          const params = this.replaceVariables(step.params || {}, context);
+
+          if (step.executorType === 'claudecode') {
+            if (skill.id === 'skill-creator' && !step.model) {
+              params.model = process.env.SKILL_CREATOR_MODEL || 'claude-opus-4-5-20251101';
+            } else if (step.model) {
+              params.model = step.model;
+            }
+          }
+
+          let result: any;
+
+          if (step.executorType === 'agent') {
+            const handler = this.executorTypesService.getHandler('agent');
+            if (!handler) {
+              throw new Error('Agent handler not found');
+            }
+            result = await handler.invoke(
+              { name: 'agent', type: 'agent', endpoint: '', healthPath: '', enabled: true } as any,
+              step.action,
+              params,
+            );
+          } else {
+            const executorName = await this.getExecutorByType(step.executorType, step.executorName);
+            result = await this.executorsService.invoke(executorName, step.action, params);
+          }
+
+          if (!result.success) {
+            const stepResult: SkillStepResult = {
+              stepId: step.id,
+              stepName: step.name,
+              success: false,
+              error: result.error,
+              duration: Date.now() - stepStartTime,
+            };
+            stepResults.push(stepResult);
+
+            subject.next({
+              type: 'step-error',
+              stepId: step.id,
+              stepName: step.name,
+              stepIndex,
+              totalSteps,
+              success: false,
+              error: result.error,
+              duration: stepResult.duration,
+            });
+
+            const finalResult: SkillExecutionResult = {
+              success: false,
+              skillId: skill.id,
+              stepResults,
+              error: `Step ${step.id} failed: ${result.error}`,
+              duration: Date.now() - startTime,
+            };
+            subject.next({ type: 'execution-error', result: finalResult });
+            return;
+          }
+
+          if (step.outputVariable) {
+            context.stepOutputs[step.outputVariable] = result;
+          }
+          context.stepOutputs[step.id] = result;
+
+          let rawOutput: string | undefined;
+          if (result?.data?.choices?.[0]?.message?.content) {
+            rawOutput = result.data.choices[0].message.content;
+          } else if (result?.data?.content) {
+            rawOutput = result.data.content;
+          } else if (result?.data?.textContent) {
+            rawOutput = result.data.textContent;
+          }
+
+          const stepResult: SkillStepResult = {
+            stepId: step.id,
+            stepName: step.name,
+            success: true,
+            output: result,
+            rawOutput,
+            duration: Date.now() - stepStartTime,
+          };
+          stepResults.push(stepResult);
+
+          subject.next({
+            type: 'step-complete',
+            stepId: step.id,
+            stepName: step.name,
+            stepIndex,
+            totalSteps,
+            success: true,
+            rawOutput,
+            duration: stepResult.duration,
+          });
+
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const stepResult: SkillStepResult = {
+            stepId: step.id,
+            stepName: step.name,
+            success: false,
+            error: errorMessage,
+            duration: Date.now() - stepStartTime,
+          };
+          stepResults.push(stepResult);
+
+          subject.next({
+            type: 'step-error',
+            stepId: step.id,
+            stepName: step.name,
+            stepIndex,
+            totalSteps,
+            success: false,
+            error: errorMessage,
+            duration: stepResult.duration,
+          });
+
+          const finalResult: SkillExecutionResult = {
+            success: false,
+            skillId: skill.id,
+            stepResults,
+            error: `Step ${step.id} failed: ${errorMessage}`,
+            duration: Date.now() - startTime,
+          };
+          subject.next({ type: 'execution-error', result: finalResult });
+          return;
+        }
+      }
+
+      const lastStep = skill.steps[skill.steps.length - 1];
+      const finalOutput = lastStep?.outputVariable
+        ? context.stepOutputs[lastStep.outputVariable]
+        : context.stepOutputs[lastStep?.id];
+
+      const finalResult: SkillExecutionResult = {
+        success: true,
+        skillId: skill.id,
+        stepResults,
+        finalOutput,
+        duration: Date.now() - startTime,
+      };
+      subject.next({ type: 'execution-complete', result: finalResult });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const finalResult: SkillExecutionResult = {
+        success: false,
+        skillId: skill.id,
+        stepResults,
+        error: errorMessage,
+        duration: Date.now() - startTime,
+      };
+      subject.next({ type: 'execution-error', result: finalResult });
     }
   }
 }

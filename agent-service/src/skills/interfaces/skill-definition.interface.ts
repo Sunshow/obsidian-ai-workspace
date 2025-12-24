@@ -120,19 +120,36 @@ export interface SkillExecutionContext {
   stepOutputs: Record<string, any>;
 }
 
+export interface SkillStepResult {
+  stepId: string;
+  stepName: string;
+  success: boolean;
+  output?: any;
+  rawOutput?: string; // AI 原始文本输出，便于调试查看
+  error?: string;
+  duration: number;
+}
+
 export interface SkillExecutionResult {
   success: boolean;
   skillId: string;
-  stepResults: Array<{
-    stepId: string;
-    stepName: string;
-    success: boolean;
-    output?: any;
-    rawOutput?: string; // AI 原始文本输出，便于调试查看
-    error?: string;
-    duration: number;
-  }>;
+  stepResults: SkillStepResult[];
   finalOutput?: any;
   error?: string;
   duration: number;
+}
+
+// SSE 事件类型
+export interface SkillExecutionEvent {
+  type: 'step-start' | 'step-complete' | 'step-error' | 'execution-complete' | 'execution-error';
+  stepId?: string;
+  stepName?: string;
+  stepIndex?: number;
+  totalSteps?: number;
+  success?: boolean;
+  output?: any;
+  rawOutput?: string;
+  error?: string;
+  duration?: number;
+  result?: SkillExecutionResult;
 }

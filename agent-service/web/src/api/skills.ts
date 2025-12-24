@@ -152,6 +152,29 @@ export interface SkillExecutionResult {
   duration: number;
 }
 
+// SSE Event Types
+export interface SkillExecutionEvent {
+  type: 'step-start' | 'step-complete' | 'step-error' | 'execution-complete' | 'execution-error';
+  stepId?: string;
+  stepName?: string;
+  stepIndex?: number;
+  totalSteps?: number;
+  success?: boolean;
+  output?: any;
+  rawOutput?: string;
+  error?: string;
+  duration?: number;
+  result?: SkillExecutionResult;
+}
+
+export interface SkillStreamCallbacks {
+  onStepStart?: (event: SkillExecutionEvent) => void;
+  onStepComplete?: (event: SkillExecutionEvent) => void;
+  onStepError?: (event: SkillExecutionEvent) => void;
+  onComplete?: (result: SkillExecutionResult) => void;
+  onError?: (error: string) => void;
+}
+
 const API_BASE = '/api/skills';
 
 export async function fetchSkills(): Promise<Skill[]> {
@@ -265,6 +288,67 @@ export async function executeSkill(
   });
   if (!res.ok) throw new Error('Failed to execute skill');
   return res.json();
+}
+
+/**
+ * Execute skill with real-time event streaming via SSE
+ */
+export function executeSkillStream(
+  id: string,
+  userInputs: Record<string, any>,
+  callbacks: SkillStreamCallbacks
+): { cancel: () => void } {
+  // Encode userInputs as base64 for query parameter
+  const userInputsBase64 = btoa(JSON.stringify(userInputs));
+  const url = `${API_BASE}/${id}/execute-stream?userInputs=${encodeURIComponent(userInputsBase64)}`;
+  
+  const eventSource = new EventSource(url);
+  
+  eventSource.onmessage = (event) => {
+    try {
+      const data: SkillExecutionEvent = JSON.parse(event.data);
+      
+      switch (data.type) {
+        case 'step-start':
+          callbacks.onStepStart?.(data);
+          break;
+        case 'step-complete':
+          callbacks.onStepComplete?.(data);
+          break;
+        case 'step-error':
+          callbacks.onStepError?.(data);
+          break;
+        case 'execution-complete':
+          if (data.result) {
+            callbacks.onComplete?.(data.result);
+          }
+          eventSource.close();
+          break;
+        case 'execution-error':
+          if (data.result) {
+            callbacks.onComplete?.(data.result);
+          } else if (data.error) {
+            callbacks.onError?.(data.error);
+          }
+          eventSource.close();
+          break;
+      }
+    } catch (e) {
+      console.error('Failed to parse SSE event:', e);
+    }
+  };
+  
+  eventSource.onerror = (error) => {
+    console.error('SSE connection error:', error);
+    callbacks.onError?.('Connection error');
+    eventSource.close();
+  };
+  
+  return {
+    cancel: () => {
+      eventSource.close();
+    },
+  };
 }
 
 export async function reloadSkills(): Promise<{ success: boolean; message: string }> {

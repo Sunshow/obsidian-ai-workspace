@@ -9,6 +9,7 @@ import { SmartFetchDto, UpdateSkillConfigDto } from './dto/smart-fetch.dto';
 import {
   SkillDefinition,
   SkillExecutionResult,
+  SkillExecutionEvent,
   SkillSchedule,
   ScheduleStatus,
   ExecutionRecord,
@@ -434,6 +435,25 @@ export class SkillsService implements OnModuleInit {
       }
       throw error;
     }
+  }
+
+  /**
+   * Execute skill with real-time event streaming via Observable
+   */
+  executeSkillStream(
+    id: string,
+    userInputs: Record<string, any>,
+  ) {
+    const skill = this.getSkillById(id);
+
+    if (!skill) {
+      throw new NotFoundException(`Skill "${id}" not found`);
+    }
+
+    this.logger.log(`Executing skill with stream: ${id}, enabled: ${skill.enabled}`);
+    this.logger.log(`User inputs: ${JSON.stringify(userInputs)}`);
+
+    return this.taskQueueService.executeManualTaskWithEvents(skill, userInputs);
   }
 
   getBuiltinVariables() {

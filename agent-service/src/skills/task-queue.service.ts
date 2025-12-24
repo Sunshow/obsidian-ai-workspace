@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Observable, Subject } from 'rxjs';
 import {
   SkillDefinition,
   SkillExecutionResult,
+  SkillExecutionEvent,
 } from './interfaces/skill-definition.interface';
 import { SkillExecutorService } from './skill-executor.service';
 
@@ -118,6 +120,82 @@ export class TaskQueueService {
       this.currentTask = null;
       this.processQueue();
     }
+  }
+
+  /**
+   * Execute manual task with real-time event streaming
+   */
+  executeManualTaskWithEvents(
+    skill: SkillDefinition,
+    userInputs: Record<string, any>,
+  ): Observable<SkillExecutionEvent> {
+    const subject = new Subject<SkillExecutionEvent>();
+
+    if (this.currentTask) {
+      // Emit error and complete immediately
+      setTimeout(() => {
+        subject.next({
+          type: 'execution-error',
+          error: `任务执行中，请稍候。当前任务: ${this.currentTask!.skillName}`,
+          result: {
+            success: false,
+            skillId: skill.id,
+            stepResults: [],
+            error: `任务执行中，请稍候。当前任务: ${this.currentTask!.skillName}`,
+            duration: 0,
+          },
+        });
+        subject.complete();
+      }, 0);
+      return subject.asObservable();
+    }
+
+    const task: QueuedTask = {
+      id: this.generateTaskId(),
+      skillId: skill.id,
+      skillName: skill.name,
+      triggerType: 'manual',
+      userInputs,
+      createdAt: new Date(),
+      status: 'running',
+      startedAt: new Date(),
+    };
+
+    this.currentTask = task;
+    this.logger.log(`Manual task with events started: ${task.id} (${skill.name})`);
+
+    // Subscribe to skill executor events and forward them
+    const subscription = this.skillExecutorService.executeSkillWithEvents(skill, userInputs).subscribe({
+      next: (event) => {
+        subject.next(event);
+        
+        // Update task status on completion
+        if (event.type === 'execution-complete' || event.type === 'execution-error') {
+          task.status = event.result?.success ? 'completed' : 'failed';
+          task.completedAt = new Date();
+          if (!event.result?.success) {
+            task.error = event.result?.error;
+          }
+          this.addToRecentTasks(task);
+          this.currentTask = null;
+          this.processQueue();
+        }
+      },
+      error: (error) => {
+        task.status = 'failed';
+        task.completedAt = new Date();
+        task.error = error instanceof Error ? error.message : 'Unknown error';
+        this.addToRecentTasks(task);
+        this.currentTask = null;
+        this.processQueue();
+        subject.error(error);
+      },
+      complete: () => {
+        subject.complete();
+      },
+    });
+
+    return subject.asObservable();
   }
 
   private async processQueue(): Promise<void> {
