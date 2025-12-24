@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { SkillsService } from './skills.service';
 import { SmartFetchDto, UpdateSkillConfigDto } from './dto/smart-fetch.dto';
 import { CreateSkillDto, UpdateSkillDto } from './dto/create-skill.dto';
 import { ExecuteSkillDto } from './dto/execute-skill.dto';
+import { UpdateScheduleDto } from './dto/schedule.dto';
 
 @Controller('api/skills')
 export class SkillsController {
@@ -75,5 +76,34 @@ export class SkillsController {
   @Post('smart-fetch')
   async smartFetch(@Body() dto: SmartFetchDto) {
     return this.skillsService.smartFetch(dto);
+  }
+
+  // Schedule APIs
+  @Get('schedules')
+  getScheduleStatus() {
+    return this.skillsService.getScheduleStatus();
+  }
+
+  @Get('schedules/history')
+  getExecutionHistory(
+    @Query('skillId') skillId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.skillsService.getExecutionHistory(skillId, limit ? parseInt(limit, 10) : undefined);
+  }
+
+  @Get(':id/schedule')
+  getSkillSchedule(@Param('id') id: string) {
+    return this.skillsService.getSkillSchedule(id);
+  }
+
+  @Put(':id/schedule')
+  updateSkillSchedule(@Param('id') id: string, @Body() dto: UpdateScheduleDto) {
+    return this.skillsService.updateSkillSchedule(id, dto);
+  }
+
+  @Post(':id/schedule/trigger')
+  async triggerScheduledSkill(@Param('id') id: string) {
+    return this.skillsService.triggerScheduledSkill(id);
   }
 }

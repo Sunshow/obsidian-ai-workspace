@@ -9,9 +9,14 @@ import { SmartFetchDto, UpdateSkillConfigDto } from './dto/smart-fetch.dto';
 import {
   SkillDefinition,
   SkillExecutionResult,
+  SkillSchedule,
+  ScheduleStatus,
+  ExecutionRecord,
 } from './interfaces/skill-definition.interface';
 import { CreateSkillDto, UpdateSkillDto } from './dto/create-skill.dto';
 import { SkillExecutorService } from './skill-executor.service';
+import { SkillSchedulerService } from './skill-scheduler.service';
+import { UpdateScheduleDto } from './dto/schedule.dto';
 
 const DEFAULT_PROMPT = `请根据以下网页内容生成一份结构化的 Markdown 笔记。要求：
 1. 提取关键信息和要点
@@ -33,6 +38,7 @@ export class SkillsService implements OnModuleInit {
     private readonly executorsService: ExecutorsService,
     private readonly skillExecutorService: SkillExecutorService,
     private readonly executorTypesService: ExecutorTypesService,
+    private readonly skillSchedulerService: SkillSchedulerService,
   ) {
     this.configPath = join(process.cwd(), 'config', 'skills.yaml');
     this.loadConfig();
@@ -41,6 +47,10 @@ export class SkillsService implements OnModuleInit {
   onModuleInit() {
     // Inject self into ExecutorTypesService for AgentHandler
     this.executorTypesService.setSkillsService(this);
+    
+    // Initialize scheduler with skills getter and start schedules
+    this.skillSchedulerService.setSkillsGetter(() => this.getAllSkillDefinitions());
+    this.skillSchedulerService.initializeSchedules();
   }
 
   private loadConfig() {
@@ -321,10 +331,16 @@ export class SkillsService implements OnModuleInit {
       userInputs: dto.userInputs || [],
       steps: dto.steps || [],
       output: dto.output,
+      schedule: dto.schedule,
     };
 
     this.config.skills.push(skill);
     this.saveConfig();
+
+    // If schedule is enabled, register the scheduled task
+    if (skill.enabled && skill.schedule?.enabled) {
+      this.skillSchedulerService.scheduleSkill(skill);
+    }
 
     this.logger.log(`Created skill: ${skill.id}`);
     return skill;
@@ -348,8 +364,16 @@ export class SkillsService implements OnModuleInit {
     if (dto.userInputs !== undefined) skill.userInputs = dto.userInputs;
     if (dto.steps !== undefined) skill.steps = dto.steps;
     if (dto.output !== undefined) skill.output = dto.output;
+    if (dto.schedule !== undefined) skill.schedule = dto.schedule;
 
     this.saveConfig();
+
+    // Update scheduler
+    if (skill.enabled && skill.schedule?.enabled) {
+      this.skillSchedulerService.scheduleSkill(skill);
+    } else {
+      this.skillSchedulerService.unscheduleSkill(id);
+    }
 
     this.logger.log(`Updated skill: ${id}`);
     return skill;
@@ -366,6 +390,9 @@ export class SkillsService implements OnModuleInit {
     if (skill.reserved) {
       throw new BadRequestException(`技能 "${id}" 是保留技能，不可删除`);
     }
+
+    // Remove scheduled task first
+    this.skillSchedulerService.unscheduleSkill(id);
 
     const index = skills.indexOf(skill);
     skills.splice(index, 1);
@@ -384,14 +411,83 @@ export class SkillsService implements OnModuleInit {
       throw new NotFoundException(`Skill "${id}" not found`);
     }
 
-    if (!skill.enabled) {
-      throw new BadRequestException(`Skill "${id}" is disabled`);
-    }
+    // 允许手动执行未启用的技能（便于测试）
+    this.logger.log(`Executing skill: ${id}, enabled: ${skill.enabled}`);
+    this.logger.log(`User inputs: ${JSON.stringify(userInputs)}`);
 
     return this.skillExecutorService.executeSkill(skill, userInputs);
   }
 
   getBuiltinVariables() {
     return this.skillExecutorService.getBuiltinVariables();
+  }
+
+  // Schedule Management
+
+  getScheduleStatus(): ScheduleStatus[] {
+    return this.skillSchedulerService.getScheduleStatus(this.getAllSkillDefinitions());
+  }
+
+  getExecutionHistory(skillId?: string, limit?: number): ExecutionRecord[] {
+    return this.skillSchedulerService.getExecutionHistory(skillId, limit);
+  }
+
+  getSkillSchedule(id: string): SkillSchedule | null {
+    const skill = this.getSkillById(id);
+    if (!skill) {
+      throw new NotFoundException(`Skill "${id}" not found`);
+    }
+    return skill.schedule || null;
+  }
+
+  updateSkillSchedule(id: string, dto: UpdateScheduleDto): SkillSchedule {
+    const skills = this.config.skills || [];
+    const skill = skills.find((s) => s.id === id);
+
+    if (!skill) {
+      throw new NotFoundException(`Skill "${id}" not found`);
+    }
+
+    const schedule: SkillSchedule = {
+      enabled: dto.enabled,
+      cron: dto.cron,
+      interval: dto.interval,
+      timezone: dto.timezone,
+      retryOnFailure: dto.retryOnFailure,
+      maxRetries: dto.maxRetries,
+    };
+
+    skill.schedule = schedule;
+    this.saveConfig();
+
+    // Update scheduler
+    if (skill.enabled && schedule.enabled) {
+      this.skillSchedulerService.scheduleSkill(skill);
+    } else {
+      this.skillSchedulerService.unscheduleSkill(id);
+    }
+
+    this.logger.log(`Updated schedule for skill: ${id}`);
+    return schedule;
+  }
+
+  async triggerScheduledSkill(id: string): Promise<SkillExecutionResult> {
+    const skill = this.getSkillById(id);
+
+    if (!skill) {
+      throw new NotFoundException(`Skill "${id}" not found`);
+    }
+
+    if (!skill.enabled) {
+      throw new BadRequestException(`Skill "${id}" is disabled`);
+    }
+
+    return this.skillSchedulerService.triggerNow(skill);
+  }
+
+  reloadSchedules(): void {
+    this.skillSchedulerService.clearAllSchedules();
+    this.skillSchedulerService.initializeSchedules();
+    this.logger.log('Schedules reloaded');
   }
 }

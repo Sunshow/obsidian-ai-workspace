@@ -25,6 +25,7 @@ import {
   SkillStep,
   UserInputField,
   BuiltinVariableInfo,
+  SkillSchedule,
 } from '@/api/skills';
 import { fetchExecutors, fetchExecutorTypes, Executor, ExecutorType, ActionDefinition } from '@/api/executors';
 
@@ -61,12 +62,14 @@ export default function SkillEditorPage() {
   const [builtinVariables, setBuiltinVariables] = useState<Record<string, boolean>>({});
   const [userInputs, setUserInputs] = useState<UserInputField[]>([]);
   const [steps, setSteps] = useState<SkillStep[]>([]);
+  const [schedule, setSchedule] = useState<SkillSchedule | undefined>(undefined);
 
   // Expanded sections
   const [expandedSections, setExpandedSections] = useState({
     builtinVars: true,
     userInputs: true,
     steps: true,
+    schedule: false,
   });
 
   useEffect(() => {
@@ -93,12 +96,25 @@ export default function SkillEditorPage() {
           setBuiltinVariables((skill.builtinVariables || {}) as Record<string, boolean>);
           setUserInputs(skill.userInputs || []);
           setSteps(skill.steps || []);
+          setSchedule(skill.schedule);
         }
       }
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleEnabled = async (checked: boolean) => {
+    setEnabled(checked);
+    if (isEditing && skillId) {
+      try {
+        await updateSkillDefinition(skillId, { enabled: checked });
+      } catch (error) {
+        console.error('Failed to toggle enabled:', error);
+        setEnabled(!checked); // Rollback on error
+      }
     }
   };
 
@@ -117,6 +133,7 @@ export default function SkillEditorPage() {
         builtinVariables,
         userInputs,
         steps,
+        schedule,
       };
 
       if (isEditing && skillId) {
@@ -260,7 +277,7 @@ export default function SkillEditorPage() {
               />
             </div>
             <div className="flex items-center gap-4 pt-6">
-              <Switch checked={enabled} onCheckedChange={setEnabled} />
+              <Switch checked={enabled} onCheckedChange={handleToggleEnabled} />
               <Label>{t('skillEditor.enableSkill')}</Label>
             </div>
           </div>
@@ -490,6 +507,118 @@ export default function SkillEditorPage() {
                   onRemove={() => removeStep(index)}
                 />
               ))
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Schedule Configuration */}
+      <Card>
+        <CardHeader
+          className="cursor-pointer"
+          onClick={() => toggleSection('schedule')}
+        >
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              {expandedSections.schedule ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+              {t('skillEditor.scheduleConfig')}
+            </CardTitle>
+            <Badge variant={schedule?.enabled ? 'default' : 'outline'}>
+              {schedule?.enabled ? t('skillEditor.scheduleEnabled') : t('skillEditor.scheduleDisabled')}
+            </Badge>
+          </div>
+          <CardDescription>{t('skillEditor.scheduleConfigDesc')}</CardDescription>
+        </CardHeader>
+        {expandedSections.schedule && (
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Switch
+                checked={schedule?.enabled || false}
+                onCheckedChange={(checked) =>
+                  setSchedule(prev => ({
+                    enabled: checked,
+                    cron: prev?.cron || '',
+                    timezone: prev?.timezone || 'Asia/Shanghai',
+                    retryOnFailure: prev?.retryOnFailure ?? true,
+                    maxRetries: prev?.maxRetries ?? 3,
+                  }))
+                }
+              />
+              <Label>{t('skillEditor.enableSchedule')}</Label>
+            </div>
+
+            {schedule?.enabled && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t('skillEditor.cronExpression')}</Label>
+                    <Input
+                      value={schedule?.cron || ''}
+                      onChange={(e) =>
+                        setSchedule(prev => prev ? { ...prev, cron: e.target.value } : prev)
+                      }
+                      placeholder="*/5 * * * *"
+                      className="font-mono"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t('skillEditor.cronHint')}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('skillEditor.timezone')}</Label>
+                    <Input
+                      value={schedule?.timezone || 'Asia/Shanghai'}
+                      onChange={(e) =>
+                        setSchedule(prev => prev ? { ...prev, timezone: e.target.value } : prev)
+                      }
+                      placeholder="Asia/Shanghai"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={schedule?.retryOnFailure ?? true}
+                      onChange={(e) =>
+                        setSchedule(prev => prev ? { ...prev, retryOnFailure: e.target.checked } : prev)
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label>{t('skillEditor.retryOnFailure')}</Label>
+                  </div>
+                  {schedule?.retryOnFailure && (
+                    <div className="flex items-center gap-2">
+                      <Label>{t('skillEditor.maxRetries')}</Label>
+                      <Input
+                        type="number"
+                        value={schedule?.maxRetries ?? 3}
+                        onChange={(e) =>
+                          setSchedule(prev => prev ? { ...prev, maxRetries: Number(e.target.value) } : prev)
+                        }
+                        className="w-20"
+                        min={1}
+                        max={10}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 rounded-md bg-muted/50 text-xs space-y-1">
+                  <div className="font-medium">{t('skillEditor.cronExamples')}</div>
+                  <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                    <span>*/5 * * * * - {t('skillEditor.every5min')}</span>
+                    <span>0 * * * * - {t('skillEditor.everyHour')}</span>
+                    <span>0 9 * * * - {t('skillEditor.everyDay9am')}</span>
+                    <span>0 0 * * 1 - {t('skillEditor.everyMonday')}</span>
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         )}

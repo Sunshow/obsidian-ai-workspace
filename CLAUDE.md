@@ -187,3 +187,35 @@ Copy `.env.example` to `.env`:
 - `./vaults` - Shared vault directory (mounted as `/vaults` in all containers)
 - `./config` - Obsidian configuration
 - `./agent-service/config` - Executor and skills YAML configuration
+
+## NestJS Development Notes
+
+### DTO Validation (CRITICAL)
+
+This project uses `ValidationPipe({ whitelist: true, transform: true })` globally. 
+
+**IMPORTANT:** All DTO class properties MUST have class-validator decorators, otherwise they will be silently filtered out and never reach the service layer.
+
+```typescript
+// WRONG - properties will be stripped by whitelist
+export class UpdateSkillDto {
+  name?: string;
+  enabled?: boolean;
+}
+
+// CORRECT - properties will pass through
+export class UpdateSkillDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+}
+```
+
+Common decorators:
+- `@IsOptional()` - for optional fields
+- `@IsString()`, `@IsBoolean()`, `@IsNumber()` - type validation
+- `@IsArray()`, `@IsObject()` - for complex types

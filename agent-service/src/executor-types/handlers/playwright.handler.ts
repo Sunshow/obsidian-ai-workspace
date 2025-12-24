@@ -83,6 +83,13 @@ export class PlaywrightHandler extends BaseExecutorHandler {
             description: '超时时间（毫秒）',
             default: 30000,
           },
+          {
+            name: 'useReadability',
+            type: 'boolean',
+            required: false,
+            description: '是否使用 Readability 提取正文（适用于文章页面），默认 false 直接返回 innerText',
+            default: false,
+          },
         ],
         returns: {
           description: '包含标题和正文的对象',
@@ -197,6 +204,11 @@ export class PlaywrightHandler extends BaseExecutorHandler {
       });
       const page = await context.newPage();
 
+      // Anti-detection: hide webdriver property
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      });
+
       const viewport = params.viewport || typeConfig.viewport;
       if (viewport) {
         await page.setViewportSize(viewport);
@@ -225,11 +237,11 @@ export class PlaywrightHandler extends BaseExecutorHandler {
 
   private async handleFetch(
     page: Page,
-    params: { url: string; includeHtml?: boolean; waitUntil?: string },
+    params: { url: string; includeHtml?: boolean; waitUntil?: string; useReadability?: boolean },
     timeout: number,
     typeConfig: Record<string, any> = {},
   ): Promise<InvokeResult> {
-    const { url, includeHtml } = params;
+    const { url, includeHtml, useReadability = false } = params;
     const waitUntil = (params.waitUntil || typeConfig.waitUntil || 'domcontentloaded') as 'domcontentloaded' | 'load' | 'networkidle';
     const contentSelectors = (typeConfig.contentSelectors || DEFAULT_CONTENT_SELECTORS).split(',').map((s: string) => s.trim());
     const contentWaitTimeout = typeConfig.contentWaitTimeout || 10000;
@@ -253,6 +265,25 @@ export class PlaywrightHandler extends BaseExecutorHandler {
     }
 
     const html = await page.content();
+
+    // 默认直接获取 innerText，只有 useReadability=true 时才使用 Readability
+    if (!useReadability) {
+      const title = await page.title();
+      const textContent = await page.evaluate(() => document.body.innerText);
+      
+      const result: Record<string, any> = {
+        success: true,
+        url,
+        title: title || 'Untitled',
+        textContent: textContent || '',
+      };
+
+      if (includeHtml) {
+        result.html = html;
+      }
+
+      return { success: true, data: result };
+    }
 
     const dom = new JSDOM(html, { url });
     const reader = new Readability(dom.window.document);

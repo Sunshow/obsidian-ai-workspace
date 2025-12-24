@@ -50,6 +50,39 @@ export interface SkillOutput {
   showInUI?: boolean;
 }
 
+export interface SkillSchedule {
+  enabled: boolean;                      // 是否启用定时执行
+  cron?: string;                         // cron 表达式 (如 "0 9 * * *" 每天9点)
+  interval?: number;                     // 固定间隔（毫秒），与 cron 二选一
+  timezone?: string;                     // 时区，默认系统时区
+  retryOnFailure?: boolean;              // 失败时是否重试
+  maxRetries?: number;                   // 最大重试次数，默认 3
+}
+
+export interface ScheduleStatus {
+  skillId: string;
+  skillName: string;
+  enabled: boolean;
+  cron?: string;
+  interval?: number;
+  timezone?: string;
+  nextExecution?: Date;
+  lastExecution?: Date;
+  lastSuccess?: boolean;
+}
+
+export interface ExecutionRecord {
+  id: string;
+  skillId: string;
+  skillName: string;
+  triggeredAt: Date;
+  completedAt?: Date;
+  triggerType: 'scheduled' | 'manual';
+  success: boolean;
+  error?: string;
+  duration: number;
+}
+
 export interface SkillI18n {
   name?: string;
   description?: string;
@@ -72,6 +105,7 @@ export interface SkillDefinition {
   userInputs: UserInputField[];
   steps: SkillStep[];
   output?: SkillOutput;
+  schedule?: SkillSchedule;
 }
 
 export interface BuiltinVariableInfo {
@@ -94,6 +128,7 @@ export interface SkillExecutionResult {
     stepName: string;
     success: boolean;
     output?: any;
+    rawOutput?: string; // AI 原始文本输出，便于调试查看
     error?: string;
     duration: number;
   }>;

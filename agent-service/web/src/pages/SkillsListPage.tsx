@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Zap, Edit, Trash2, Play, Lock, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Plus, Zap, Edit, Trash2, Play, Lock, RefreshCw, Clock } from 'lucide-react';
 import {
   fetchSkills,
   fetchSkillDefinitions,
   deleteSkillDefinition,
   reloadSkills,
+  updateSkillDefinition,
   Skill,
   SkillDefinition,
 } from '@/api/skills';
@@ -18,11 +20,13 @@ import { getLocalizedSkillName, getLocalizedSkillDescription } from '@/hooks/use
 export default function SkillsListPage() {
   const { t, i18n } = useTranslation();
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [, setDefinitions] = useState<SkillDefinition[]>([]);
+  const [definitions, setDefinitions] = useState<SkillDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const navigate = useNavigate();
   const lang = i18n.language;
+
+  const getDefinition = (skillId: string) => definitions.find(d => d.id === skillId);
 
   useEffect(() => {
     loadData();
@@ -62,6 +66,16 @@ export default function SkillsListPage() {
       console.error('Failed to reload skills:', error);
     } finally {
       setReloading(false);
+    }
+  };
+
+  const handleToggleSkill = async (skillId: string, enabled: boolean) => {
+    try {
+      await updateSkillDefinition(skillId, { enabled });
+      // Update local state
+      setSkills(skills.map(s => s.id === skillId ? { ...s, enabled } : s));
+    } catch (error) {
+      console.error('Failed to toggle skill:', error);
     }
   };
 
@@ -149,6 +163,14 @@ export default function SkillsListPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {customSkills.map((skill) => {
+              const def = getDefinition(skill.id);
+              const hasSchedule = def?.schedule?.enabled;
+              const hasRequiredInputs = def?.userInputs?.some(i => i.required);
+              const hasDefaultInputs = hasRequiredInputs 
+                ? def?.userInputs?.filter(i => i.required).every(i => 
+                    i.defaultValue !== undefined
+                  )
+                : true;
               return (
                 <Card key={skill.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-2">
@@ -157,9 +179,18 @@ export default function SkillsListPage() {
                         <Zap className="h-4 w-4 text-primary" />
                         {getLocalizedSkillName(skill, lang)}
                       </CardTitle>
-                      <Badge variant={skill.enabled ? 'default' : 'secondary'}>
-                        {skill.enabled ? t('common.enabled') : t('common.disabled')}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Switch
+                          checked={skill.enabled}
+                          onCheckedChange={(checked) => handleToggleSkill(skill.id, checked)}
+                        />
+                        {hasSchedule && (
+                          <Badge variant={hasDefaultInputs ? 'outline' : 'destructive'}>
+                            <Clock className="h-3 w-3 mr-1" />
+                            {hasDefaultInputs ? t('skills.scheduled') : t('skills.scheduleNeedsConfig')}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <CardDescription className="text-sm">
                       {getLocalizedSkillDescription(skill, lang)}

@@ -90,7 +90,9 @@
     "noCustomSkills": "No custom skills yet",
     "createFirst": "Create Your First Skill",
     "deleteConfirm": "Are you sure you want to delete this skill?",
-    "noSkillsAvailable": "No skills available"
+    "noSkillsAvailable": "No skills available",
+    "scheduled": "Scheduled",
+    "scheduleNeedsConfig": "Schedule-Needs Config"
   },
   "skillEditor": {
     "createTitle": "Create Skill",
@@ -130,7 +132,26 @@
     "notConfigured": "(not configured)",
     "saveNameRequired": "Please enter skill name",
     "saveFailed": "Save failed",
-    "fillRequired": "Please fill required fields"
+    "fillRequired": "Please fill required fields",
+    "scheduleConfig": "Schedule Configuration",
+    "scheduleConfigDesc": "Configure automatic scheduled execution",
+    "scheduleEnabled": "Enabled",
+    "scheduleDisabled": "Disabled",
+    "enableSchedule": "Enable scheduled execution",
+    "cronExpression": "Cron Expression",
+    "cronHint": "Use standard 5-field cron expression",
+    "timezone": "Timezone",
+    "retryOnFailure": "Retry on failure",
+    "maxRetries": "Max retries",
+    "cronExamples": "Common Cron Expressions:",
+    "every5min": "Every 5 minutes",
+    "everyHour": "Every hour",
+    "everyDay9am": "Daily at 9am",
+    "everyMonday": "Every Monday",
+    "defaultInputs": "Default Inputs for Schedule",
+    "defaultInputsDesc": "These values will be used during scheduled execution (required fields must be configured)",
+    "allConfigured": "Configured",
+    "missingDefaults": "Needs Config"
   },
   "skillRunner": {
     "inputParams": "Input Parameters",
@@ -144,7 +165,13 @@
     "finalOutput": "Final Output",
     "renderedView": "Rendered View",
     "rawOutput": "Raw Output",
-    "noSpecialUI": "This skill has no special UI"
+    "noSpecialUI": "This skill has no special UI",
+    "scheduleStatus": "Scheduled",
+    "configureDefaults": "Configure Defaults",
+    "scheduleNeedsDefaultInputs": "Scheduled execution requires default input values",
+    "saveParams": "Save Params",
+    "paramsSaved": "Parameters saved",
+    "saveParamsFailed": "Failed to save parameters"
   },
   "smartFetch": {
     "title": "Smart Fetch",

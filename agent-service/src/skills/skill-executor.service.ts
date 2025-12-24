@@ -208,7 +208,8 @@ export class SkillExecutorService {
     const startTime = Date.now();
     const stepResults: SkillExecutionResult['stepResults'] = [];
 
-    this.logger.log(`Executing skill: ${skill.id}`);
+    this.logger.log(`Executing skill: ${skill.id}, steps: ${skill.steps.length}`);
+    this.logger.log(`Builtin variables config: ${JSON.stringify(skill.builtinVariables || {})}`);
 
     // Build execution context
     const context: SkillExecutionContext = {
@@ -216,6 +217,8 @@ export class SkillExecutorService {
       userInputValues: userInputValues || {},
       stepOutputs: {},
     };
+
+    this.logger.log(`Generated builtin values: ${JSON.stringify(context.builtinValues)}`);
 
     try {
       // Execute each step
@@ -238,6 +241,8 @@ export class SkillExecutorService {
         try {
           // Replace variables in params
           const params = this.replaceVariables(step.params || {}, context);
+
+          this.logger.log(`Step ${step.id} params after variable replacement: ${JSON.stringify(params).substring(0, 500)}...`);
 
           // 对于 claudecode 执行器，传递步骤级别的 model 配置
           if (step.executorType === 'claudecode') {
@@ -287,6 +292,7 @@ export class SkillExecutorService {
           }
 
           if (!result.success) {
+            this.logger.error(`Step ${step.id} failed: ${result.error}`);
             stepResults.push({
               stepId: step.id,
               stepName: step.name,
@@ -310,16 +316,31 @@ export class SkillExecutorService {
           }
           context.stepOutputs[step.id] = result;
 
+          // Extract raw output for debugging (especially for claudecode responses)
+          let rawOutput: string | undefined;
+          if (result?.data?.choices?.[0]?.message?.content) {
+            rawOutput = result.data.choices[0].message.content;
+          } else if (result?.data?.content) {
+            rawOutput = result.data.content;
+          } else if (result?.data?.textContent) {
+            // playwright fetch result
+            rawOutput = result.data.textContent;
+          }
+
           stepResults.push({
             stepId: step.id,
             stepName: step.name,
             success: true,
             output: result,
+            rawOutput,
             duration: Date.now() - stepStartTime,
           });
+
+          this.logger.log(`Step ${step.id} completed successfully in ${Date.now() - stepStartTime}ms`);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error';
+          this.logger.error(`Step ${step.id} exception: ${errorMessage}`, error instanceof Error ? error.stack : '');
           stepResults.push({
             stepId: step.id,
             stepName: step.name,
@@ -343,6 +364,8 @@ export class SkillExecutorService {
       const finalOutput = lastStep?.outputVariable
         ? context.stepOutputs[lastStep.outputVariable]
         : context.stepOutputs[lastStep?.id];
+
+      this.logger.log(`Skill ${skill.id} completed successfully in ${Date.now() - startTime}ms`);
 
       return {
         success: true,

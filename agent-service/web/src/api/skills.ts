@@ -93,6 +93,15 @@ export interface SkillOutput {
   showInUI?: boolean;
 }
 
+export interface SkillSchedule {
+  enabled: boolean;
+  cron?: string;
+  interval?: number;
+  timezone?: string;
+  retryOnFailure?: boolean;
+  maxRetries?: number;
+}
+
 export interface SkillI18n {
   name?: string;
   description?: string;
@@ -115,6 +124,7 @@ export interface SkillDefinition {
   userInputs: UserInputField[];
   steps: SkillStep[];
   output?: SkillOutput;
+  schedule?: SkillSchedule;
 }
 
 export interface BuiltinVariableInfo {
@@ -128,6 +138,7 @@ export interface SkillStepResult {
   stepName: string;
   success: boolean;
   output?: any;
+  rawOutput?: string;
   error?: string;
   duration: number;
 }
@@ -260,4 +271,17 @@ export async function reloadSkills(): Promise<{ success: boolean; message: strin
   const res = await fetch(`${API_BASE}/reload`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to reload skills');
   return res.json();
+}
+
+export async function saveSkillDefaultInputs(
+  id: string,
+  defaultInputs: Record<string, any>
+): Promise<SkillDefinition> {
+  const skill = await fetchSkillDefinition(id);
+  // 直接更新 userInputs 中的 defaultValue
+  const updatedUserInputs = skill.userInputs?.map(input => ({
+    ...input,
+    defaultValue: defaultInputs[input.name] ?? input.defaultValue
+  }));
+  return updateSkillDefinition(id, { userInputs: updatedUserInputs });
 }

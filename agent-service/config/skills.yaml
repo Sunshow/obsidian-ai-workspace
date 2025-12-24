@@ -139,217 +139,218 @@ skills:
         defaultValue: true
         required: false
     steps:
-      - id: generate-skill
-        name: 生成技能定义
+      - id: analyze-schedule
+        name: 第一轮 - 分析定时需求
         executorType: claudecode
         action: chat
         params:
-          max_turns: 10
+          max_turns: 3
+          system_prompt: 你是一个精确的需求分析器，只输出指定格式，不输出任何额外内容。
           messages:
             - role: user
-              content: >
-                你是一个技能定义生成器。请基于用户的自然语言描述，生成符合系统规范的技能定义 JSON。
+              content: |
+                # 任务：分析定时需求
 
+                分析以下需求是否包含定时执行要求。
 
-                ## 可用的执行器类型和动作
+                ## 用户需求
+                {{requirement}}
 
+                ## 判断规则
+                检查是否包含以下时间相关表述：
+                - "每X分钟"、"每X小时"、"每隔"
+                - "每天"、"每周"、"每月"
+                - "定时"、"定期"、"自动执行"
+
+                ## 输出规则（严格遵守）
+                - 如果包含定时需求，只输出纯 JSON（不要 markdown 代码块）：
+                  {"enabled":true,"cron":"对应的cron表达式","timezone":"Asia/Shanghai","retryOnFailure":true,"maxRetries":3}
+                - 如果不包含定时需求，只输出：none
+
+                常用 cron 表达式参考：
+                - 每5分钟: */5 * * * *
+                - 每30分钟: */30 * * * *
+                - 每小时: 0 * * * *
+                - 每天9点: 0 9 * * *
+                - 每周一: 0 0 * * 1
+
+                请严格按规则输出，不要有任何其他内容！
+        outputVariable: scheduleResult
+      - id: analyze-inputs
+        name: 第二轮 - 分析用户输入参数
+        executorType: claudecode
+        action: chat
+        params:
+          max_turns: 5
+          system_prompt: 你是一个精确的需求分析器，只输出 JSON 数组格式，不输出任何额外内容。
+          messages:
+            - role: user
+              content: |
+                # 任务：分析用户输入参数
+
+                分析以下需求需要用户提供哪些输入参数。
+
+                ## 用户需求
+                {{requirement}}
+
+                ## 输出格式
+                输出一个 JSON 数组，包含所有需要用户输入的参数。
+                不要输出 markdown 代码块，只输出纯 JSON 数组。
+
+                每个参数格式：
+                {
+                  "name": "参数名（英文，camelCase）",
+                  "label": "标签（中文）",
+                  "labelEn": "Label (English)",
+                  "type": "text|textarea|number|checkbox|select",
+                  "placeholder": "提示文字（中文）",
+                  "placeholderEn": "Placeholder (English)",
+                  "defaultValue": "默认值（可选）",
+                  "required": true或false,
+                  "options": [{"label":"选项","value":"值"}]  // 仅 select 类型需要
+                }
+
+                ## 常见参数类型
+                - URL输入: type="text", required=true
+                - 长文本: type="textarea"
+                - 保存路径: type="text", defaultValue="/vaults/notes/"
+                - 开关选项: type="checkbox", defaultValue=true/false
+                - 下拉选择: type="select", 需提供 options
+
+                ## 输出要求
+                1. 只输出 JSON 数组，不要有其他内容
+                2. 如果不需要任何用户输入，输出空数组: []
+                3. 参数 name 使用 camelCase 命名
+        outputVariable: inputsResult
+      - id: analyze-steps
+        name: 第三轮 - 设计执行步骤
+        executorType: claudecode
+        action: chat
+        params:
+          max_turns: 8
+          system_prompt: 你是一个精确的工作流设计器，只输出 JSON 数组格式，不输出任何额外内容。
+          messages:
+            - role: user
+              content: |
+                # 任务：设计执行步骤
+
+                根据用户需求和已分析的输入参数，设计技能的执行步骤。
+
+                ## 用户需求
+                {{requirement}}
+
+                ## 已分析的用户输入参数
+                {{inputsResult.data.choices.0.message.content}}
+
+                ## 可用的执行器和动作
 
                 ### claudecode (Claude Code Executor)
-
-                适用于需要 AI 处理的任务：文本生成、内容分析、代码生成等
-
+                适用于：文本生成、内容分析、代码生成、文件操作
                 - **chat**: OpenAI 兼容格式对话
-                  - messages (array, 必填): 消息数组 [{role: "user", content: "..."}]
-                  - stream (boolean): 是否流式输出，默认 false
-                  - model (string): 模型名称
-                  - max_turns (number): 最大对话轮次，根据任务复杂度设置：
-                    - 简单任务（纯文本生成、格式转换）: 5
-                    - 一般任务（内容分析、摘要生成）: 10
-                    - 复杂任务（需要文件操作、多步骤处理）: 15
-                  - system_prompt (string): 系统提示词
-                - **chat-simple**: 简化对话接口，参数同上
-
+                  - messages: [{role: "user", content: "..."}]
+                  - stream: false
+                  - max_turns: 5(简单)/10(一般)/15(复杂)
+                  - system_prompt: "系统提示词"
+                - 返回格式: {{outputVar.data.choices.0.message.content}}
 
                 ### playwright (Playwright Executor)
-
-                适用于网页抓取和截图，支持 JS 渲染页面
-
+                适用于：网页抓取和截图
                 - **fetch**: 抓取网页内容
-                  - url (string, 必填): 网页 URL
-                  - includeHtml (boolean): 是否包含 HTML，默认 false
-                  - waitUntil (string): 等待条件 domcontentloaded/load/networkidle
-                  - timeout (number): 超时毫秒数，默认 30000
+                  - url: 网页URL
+                  - waitUntil: networkidle
+                  - timeout: 30000
+                - 返回: {{outputVar.data.title}}, {{outputVar.data.textContent}}
                 - **screenshot**: 网页截图
-                  - url (string, 必填): 网页 URL
-                  - fullPage (boolean): 全页面截图，默认 false
-                  - savePath (string): 保存目录，不填返回 base64
-                  - fileName (string): 文件名，不填自动生成
+                  - url, fullPage, savePath, fileName
+                - 返回: {{outputVar.data.fileName}}
 
-                ## 执行器返回结构（重要！）
+                ## 重要限制（必须遵守）
+                - 不支持通知/提醒/邮件/消息推送功能
+                - 不支持数据库操作
+                - 不支持外部 API 调用
+                - 只能使用上述列出的执行器和动作
+                - 如果用户需求包含不支持的功能，在技能描述中注明该功能暂不支持
 
+                ## 输出格式
+                输出一个 JSON 数组，包含所有执行步骤。
+                不要输出 markdown 代码块，只输出纯 JSON 数组。
 
-                所有执行器返回格式都是: {success: boolean, data: {...}}
-
-                引用时必须使用 {{outputVar.data.xxx}} 格式
-
-
-                ### claudecode 返回结构
-
-                ```json
-
+                每个步骤格式：
                 {
-                  "success": true,
-                  "data": {
-                    "choices": [{
-                      "message": { "role": "assistant", "content": "AI 的回复内容" }
-                    }]
-                  }
+                  "id": "step1",
+                  "name": "步骤名称（中文）",
+                  "executorType": "claudecode|playwright",
+                  "action": "chat|fetch|screenshot",
+                  "params": {
+                    // 对应动作的参数
+                  },
+                  "outputVariable": "result1"
                 }
 
-                ```
+                ## 变量引用规则
+                - 用户输入: {{inputName}}
+                - 内置变量: {{currentDate}}, {{currentDatetime}}, {{randomId}}
+                - 步骤输出: {{outputVar.data.xxx}}
 
-                引用 AI 回复: {{outputVar.data.choices.0.message.content}}
+                ## 输出要求
+                1. 只输出 JSON 数组
+                2. 步骤 id 使用 step1, step2... 或描述性名称
+                3. outputVariable 用于存储步骤结果，供后续步骤引用
+        outputVariable: stepsResult
+      - id: assemble-skill
+        name: 第四轮 - 组装完整技能定义
+        executorType: claudecode
+        action: chat
+        params:
+          max_turns: 5
+          system_prompt: 你是一个 JSON 组装器，将各部分组合成完整的技能定义 JSON。只输出纯 JSON，不要 markdown 代码块。
+          messages:
+            - role: user
+              content: |
+                # 任务：组装完整技能定义
 
+                将前几轮分析的结果组装成完整的技能定义 JSON。
 
-                ### playwright fetch 返回结构
+                ## 用户需求
+                {{requirement}}
 
-                ```json
+                ## 用户指定的技能名称
+                {{skillName}}
 
+                ## 已分析的用户输入参数
+                {{inputsResult.data.choices.0.message.content}}
+
+                ## 已设计的执行步骤
+                {{stepsResult.data.choices.0.message.content}}
+
+                ## 技能定义模板
                 {
-                  "success": true,
-                  "data": {
-                    "url": "抓取的 URL",
-                    "title": "页面标题",
-                    "textContent": "页面正文内容"
-                  }
-                }
-
-                ```
-
-                引用标题: {{outputVar.data.title}}
-
-                引用正文: {{outputVar.data.textContent}}
-
-
-                ### playwright screenshot 返回结构
-
-                ```json
-
-                {
-                  "success": true,
-                  "data": {
-                    "url": "截图的 URL",
-                    "filePath": "保存的文件路径",
-                    "fileName": "文件名"
-                  }
-                }
-
-                ```
-
-                引用文件名: {{outputVar.data.fileName}}
-
-
-                ## 技能定义结构
-
-
-                ```json
-
-                {
-                  "id": "技能ID（必填，英文小写，用连字符分隔，如 my-skill-name）",
-                  "name": "技能名称（中文，作为默认显示）",
-                  "description": "技能描述（中文，说明这个技能做什么）",
+                  "id": "技能ID（英文小写，连字符分隔，如 my-skill）",
+                  "name": "技能名称（中文，如用户指定则使用指定名称）",
+                  "description": "技能描述（中文，一句话描述功能）",
                   "enabled": true,
                   "i18n": {
                     "en": {
-                      "name": "English skill name",
-                      "description": "English description of what this skill does"
+                      "name": "English Skill Name",
+                      "description": "English description"
                     }
                   },
                   "builtinVariables": {
                     "currentDate": true,
-                    "currentTime": true,
                     "currentDatetime": true,
-                    "randomId": true
+                    "randomId": false
                   },
-                  "userInputs": [
-                    {
-                      "name": "变量名（英文，用于引用）",
-                      "label": "显示标签（中文）",
-                      "labelEn": "English label (optional)",
-                      "type": "text|textarea|number|checkbox|select",
-                      "placeholder": "输入提示（中文）",
-                      "placeholderEn": "English placeholder (optional)",
-                      "defaultValue": "默认值",
-                      "required": true,
-                      "options": [{"label": "选项名", "value": "选项值"}]
-                    }
-                  ],
-                  "steps": [
-                    {
-                      "id": "step1",
-                      "name": "步骤名称",
-                      "executorType": "claudecode|playwright",
-                      "action": "动作名",
-                      "params": {
-                        "key": "使用 {{变量名}} 引用变量"
-                      },
-                      "outputVariable": "result1"
-                    }
-                  ]
+                  "userInputs": [/* 上面分析的输入参数 */],
+                  "steps": [/* 上面设计的执行步骤 */]
                 }
 
-                ```
-
-
-                ## 变量引用规则（重要！）
-
-                - 内置变量: {{currentDate}}, {{randomId}} 等 - 直接引用
-
-                - 用户输入: {{inputName}} - 直接引用
-
-                - 步骤输出: 必须使用 {{outputVar.data.xxx}} 格式
-                  - 注意: 所有步骤返回都包装在 data 字段中！
-                  - playwright fetch 示例: {{fetchResult.data.textContent}}
-                  - claudecode chat 示例: {{chatResult.data.choices.0.message.content}}
-
-                ## 用户需求
-
-                {{requirement}}
-
-
-                {{#if skillName}}
-
-                用户指定的技能名称: {{skillName}}
-
-                {{/if}}
-
-
-                ## 生成要求
-
-                1. 仔细分析用户需求，设计合理的步骤流程
-
-                2. 选择最适合的执行器类型
-
-                3. 定义清晰的用户输入字段
-
-                4. 确保变量引用正确，步骤输出必须用 .data. 路径
-
-                5. 只输出 JSON，不要有其他内容
-
-                6. JSON 必须是合法格式，可以直接解析
-
-                7. **必须包含 id 字段**，使用英文小写和连字符，如 "github-readme-generator"
-
-                8. 根据步骤复杂度合理设置 claudecode 的 max_turns 参数
-                   - 简单任务: 5, 一般任务: 10, 复杂任务: 15
-                9. 生成笔记类技能时，遵循 Obsidian 规范：
-                   - 使用一级标题（#）作为文件名
-                   - 笔记正文从二级标题（##）开始，不要在正文中包含一级标题
-                   - 文件名去除特殊字符，使用下划线或短横线连接
-                10. **多语言支持**: name 和 description 使用中文，同时在 i18n.en 中提供英文翻译
-
-                11. userInputs 的 label/placeholder 使用中文，并提供
-                labelEn/placeholderEn 英文版本
+                ## 输出要求
+                1. 只输出完整的 JSON 对象，不要 markdown 代码块
+                2. 必须包含 id 字段（英文小写，连字符分隔）
+                3. 不要包含 schedule 字段（定时配置单独处理）
+                4. 确保 JSON 格式正确，可以直接解析
+                5. 如果用户指定了技能名称，使用指定的名称
+                6. 根据步骤实际使用情况设置 builtinVariables
         outputVariable: skillDefinition
       - id: register-skill
         name: 注册技能
@@ -358,137 +359,5 @@ skills:
         condition: '{{autoRegister}} === true'
         params:
           definition: '{{skillDefinition.data.choices.0.message.content}}'
+          schedule: '{{scheduleResult.data.choices.0.message.content}}'
         outputVariable: registerResult
-  - id: github
-    name: GitHub项目中文介绍生成器
-    description: 抓取GitHub仓库README内容，生成中文项目介绍和标签，保存到指定笔记路径
-    enabled: true
-    builtin: false
-    i18n:
-      en:
-        name: GitHub Project Intro Generator
-        description: >-
-          Fetch GitHub repo README, generate Chinese intro with tags, save to
-          notes
-    builtinVariables:
-      currentDate: true
-      currentTime: true
-      currentDatetime: true
-      randomId: false
-    userInputs:
-      - name: repoUrl
-        label: GitHub 仓库 URL
-        labelEn: GitHub Repository URL
-        type: text
-        placeholder: https://github.com/username/repo
-        required: true
-      - name: savePath
-        label: 笔记保存路径
-        labelEn: Note Save Path
-        type: text
-        placeholder: /vaults/notes/github-projects/
-        placeholderEn: /vaults/notes/github-projects/
-        defaultValue: /vaults/notes/
-        required: true
-    steps:
-      - id: step1
-        name: 抓取GitHub README页面
-        executorType: playwright
-        action: fetch
-        params:
-          url: '{{repoUrl}}'
-          includeHtml: false
-          waitUntil: networkidle
-          timeout: 30000
-        outputVariable: readmeContent
-      - id: step2
-        name: AI生成中文介绍和标签
-        executorType: claudecode
-        action: chat
-        params:
-          messages:
-            - role: user
-              content: |-
-                请分析以下GitHub项目README内容，生成一份简洁的中文项目介绍（200-300字），并提取3-5个关键标签。
-
-                项目URL: {{repoUrl}}
-                页面标题: {{readmeContent.data.title}}
-                README内容:
-                {{readmeContent.data.textContent}}
-
-                请按以下格式输出：
-                # 项目名称
-
-                ## 项目介绍
-                [中文介绍内容]
-
-                ## 标签
-                - 标签1
-                - 标签2
-                - 标签3
-
-                ## 原始链接
-                {{repoUrl}}
-
-                ## 抓取时间
-                {{currentDatetime}}
-          stream: false
-          max_turns: 5
-        outputVariable: aiResult
-      - id: step3
-        name: 保存到笔记
-        executorType: claudecode
-        action: chat
-        params:
-          messages:
-            - role: user
-              content: |-
-                请将以下内容保存到文件中。
-
-                保存路径: {{savePath}}
-                文件名: 使用项目名称生成合适的文件名（英文，小写，用连字符分隔）.md
-
-                内容:
-                {{aiResult.data.choices.0.message.content}}
-
-                请使用Write工具保存文件，并返回保存的完整路径。
-          stream: false
-          max_turns: 10
-        outputVariable: saveResult
-  - id: daily-inspiration
-    name: 每日心灵鸡汤
-    description: 每次点击生成一段温暖人心的励志鸡汤文案
-    enabled: true
-    builtin: false
-    i18n:
-      en:
-        name: Daily Inspiration
-        description: Generate a warm and inspiring motivational quote on each click
-    builtinVariables:
-      currentDate: true
-      currentTime: true
-      currentDatetime: true
-      randomId: false
-    userInputs: []
-    steps:
-      - id: step1
-        name: 生成心灵鸡汤
-        executorType: claudecode
-        action: chat-simple
-        params:
-          messages:
-            - role: user
-              content: |-
-                请生成一段温暖励志的心灵鸡汤文案，要求：
-                1. 内容积极向上，充满正能量
-                2. 语言优美流畅，富有感染力
-                3. 长度在100-200字之间
-                4. 可以包含人生哲理、奋斗励志、温暖治愈等主题
-                5. 每次生成的内容要有所不同
-
-                今天是 {{currentDate}}，请结合当下时节特点生成内容。
-
-                直接输出鸡汤文案即可，不需要其他说明。
-          max_turns: 5
-          stream: false
-        outputVariable: inspiration

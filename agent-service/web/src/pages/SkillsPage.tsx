@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Streamdown } from 'streamdown';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle, Play, Code, FileText } from 'lucide-react';
+import { Bot, Globe, Loader2, Settings, Copy, Check, AlertTriangle, CheckCircle, Play, Code, FileText, Clock, Save } from 'lucide-react';
 import {
   fetchSmartFetchConfig,
   updateSmartFetchConfig,
@@ -16,6 +16,7 @@ import {
   fetchSkills,
   fetchSkillDefinition,
   executeSkill,
+  saveSkillDefaultInputs,
   Skill,
   SkillDefinition,
   SkillExecutionResult,
@@ -421,10 +422,12 @@ export default function SkillsPage() {
 // Generic runner for custom skills
 function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }) {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const lang = i18n.language;
   const [definition, setDefinition] = useState<SkillDefinition | null>(null);
   const [inputs, setInputs] = useState<Record<string, any>>({});
   const [executing, setExecuting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<SkillExecutionResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRawOutput, setShowRawOutput] = useState(false);
@@ -433,7 +436,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
     fetchSkillDefinition(skillId)
       .then((def) => {
         setDefinition(def);
-        // Initialize default values
+        // Initialize with field default values
         const defaults: Record<string, any> = {};
         def?.userInputs?.forEach((input) => {
           if (input.defaultValue !== undefined) {
@@ -503,6 +506,23 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
     }
   };
 
+  const handleSaveInputs = async () => {
+    console.log('handleSaveInputs called, skillId:', skillId, 'inputs:', inputs);
+    setSaving(true);
+    try {
+      const updatedDef = await saveSkillDefaultInputs(skillId, inputs);
+      console.log('Save successful:', updatedDef);
+      setDefinition(updatedDef);
+      window.dispatchEvent(new CustomEvent('skills-updated'));
+      alert(t('skillRunner.paramsSaved'));
+    } catch (error) {
+      console.error('Failed to save inputs:', error);
+      alert(t('skillRunner.saveParamsFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateInput = (name: string, value: any) => {
     setInputs((prev) => ({ ...prev, [name]: value }));
   };
@@ -515,12 +535,50 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
     );
   }
 
+  // Check schedule status
+  const hasSchedule = definition?.schedule?.enabled;
+  const hasRequiredInputs = definition?.userInputs?.some(i => i.required);
+  const hasDefaultInputs = hasRequiredInputs 
+    ? definition?.userInputs?.filter(i => i.required).every(i => 
+        i.defaultValue !== undefined
+      )
+    : true;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{getLocalizedSkillName(skill, lang)}</h1>
         <p className="text-muted-foreground">{getLocalizedSkillDescription(skill, lang)}</p>
       </div>
+
+      {/* Schedule Status */}
+      {hasSchedule && (
+        <Card className={hasDefaultInputs ? 'border-primary/50' : 'border-destructive'}>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span className="text-sm">
+                  {t('skillRunner.scheduleStatus')}: <code className="text-xs bg-muted px-1 rounded">{definition?.schedule?.cron}</code>
+                </span>
+                <Badge variant={hasDefaultInputs ? 'outline' : 'destructive'}>
+                  {hasDefaultInputs ? t('skills.scheduled') : t('skills.scheduleNeedsConfig')}
+                </Badge>
+              </div>
+              {!hasDefaultInputs && (
+                <Button size="sm" variant="outline" onClick={() => navigate(`/skills/${skillId}/edit`)}>
+                  {t('skillRunner.configureDefaults')}
+                </Button>
+              )}
+            </div>
+            {!hasDefaultInputs && (
+              <p className="text-xs text-destructive mt-2">
+                {t('skillRunner.scheduleNeedsDefaultInputs')}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Input Form */}
       <Card>
@@ -593,8 +651,22 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
             <p className="text-muted-foreground text-center py-4">{t('skillRunner.noParamsRequired')}</p>
           )}
         </CardContent>
-        <CardFooter>
-          <Button onClick={handleExecute} disabled={executing} className="w-full">
+        <CardFooter className="flex gap-2">
+          {definition?.userInputs && definition.userInputs.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleSaveInputs}
+              disabled={executing || saving}
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {t('skillRunner.saveParams')}
+            </Button>
+          )}
+          <Button onClick={handleExecute} disabled={executing} className="flex-1">
             {executing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -644,27 +716,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                 <Label className="text-sm font-medium">{t('skillRunner.executionSteps')}</Label>
                 <div className="space-y-2">
                   {result.stepResults.map((step, index) => (
-                    <div
-                      key={step.stepId}
-                      className={`flex items-center justify-between p-3 rounded-md border ${
-                        step.success
-                          ? 'bg-green-500/5 border-green-500/20'
-                          : 'bg-destructive/5 border-destructive/20'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{index + 1}</Badge>
-                        <span>{step.stepName}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{(step.duration / 1000).toFixed(2)}s</span>
-                        {step.success ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-destructive" />
-                        )}
-                      </div>
-                    </div>
+                    <StepResultItem key={step.stepId} step={step} index={index} />
                   ))}
                 </div>
               </div>
@@ -717,6 +769,52 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
             )}
           </CardContent>
         </Card>
+      )}
+    </div>
+  );
+}
+
+// Step result item with expandable raw output
+function StepResultItem({ step, index }: { step: { stepId: string; stepName: string; success: boolean; duration: number; rawOutput?: string; error?: string }; index: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasOutput = step.rawOutput || step.error;
+
+  return (
+    <div
+      className={`rounded-md border ${
+        step.success
+          ? 'bg-green-500/5 border-green-500/20'
+          : 'bg-destructive/5 border-destructive/20'
+      }`}
+    >
+      <div
+        className={`flex items-center justify-between p-3 ${hasOutput ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+        onClick={() => hasOutput && setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{index + 1}</Badge>
+          <span>{step.stepName}</span>
+          {hasOutput && (
+            <span className="text-xs text-muted-foreground">
+              {expanded ? '▼' : '▶'}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>{(step.duration / 1000).toFixed(2)}s</span>
+          {step.success ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          )}
+        </div>
+      </div>
+      {expanded && hasOutput && (
+        <div className="px-3 pb-3 pt-0">
+          <pre className="whitespace-pre-wrap text-xs bg-muted p-3 rounded-md overflow-auto max-h-[300px]">
+            {step.error || step.rawOutput}
+          </pre>
+        </div>
       )}
     </div>
   );

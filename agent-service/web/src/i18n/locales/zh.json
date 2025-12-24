@@ -90,7 +90,9 @@
     "noCustomSkills": "暂无自定义技能",
     "createFirst": "创建第一个技能",
     "deleteConfirm": "确定要删除这个技能吗？",
-    "noSkillsAvailable": "暂无可用技能"
+    "noSkillsAvailable": "暂无可用技能",
+    "scheduled": "定时",
+    "scheduleNeedsConfig": "定时-待配置"
   },
   "skillEditor": {
     "createTitle": "创建技能",
@@ -130,7 +132,26 @@
     "notConfigured": "(未配置)",
     "saveNameRequired": "请输入技能名称",
     "saveFailed": "保存失败",
-    "fillRequired": "请填写必填字段"
+    "fillRequired": "请填写必填字段",
+    "scheduleConfig": "定时配置",
+    "scheduleConfigDesc": "配置技能定时自动执行",
+    "scheduleEnabled": "已启用",
+    "scheduleDisabled": "未启用",
+    "enableSchedule": "启用定时执行",
+    "cronExpression": "Cron 表达式",
+    "cronHint": "使用标准 5 位 cron 表达式",
+    "timezone": "时区",
+    "retryOnFailure": "失败时重试",
+    "maxRetries": "最大重试次数",
+    "cronExamples": "常用 Cron 表达式:",
+    "every5min": "每5分钟",
+    "everyHour": "每小时",
+    "everyDay9am": "每天9点",
+    "everyMonday": "每周一",
+    "defaultInputs": "定时执行默认参数",
+    "defaultInputsDesc": "定时执行时将使用这些参数值（必填参数必须配置）",
+    "allConfigured": "已配置",
+    "missingDefaults": "待配置"
   },
   "skillRunner": {
     "inputParams": "输入参数",
@@ -144,7 +165,13 @@
     "finalOutput": "最终输出",
     "renderedView": "渲染视图",
     "rawOutput": "原始输出",
-    "noSpecialUI": "此技能暂无专属界面"
+    "noSpecialUI": "此技能暂无专属界面",
+    "scheduleStatus": "定时执行",
+    "configureDefaults": "配置默认参数",
+    "scheduleNeedsDefaultInputs": "定时执行需要配置默认输入参数",
+    "saveParams": "保存参数",
+    "paramsSaved": "参数已保存",
+    "saveParamsFailed": "保存参数失败"
   },
   "smartFetch": {
     "title": "Smart Fetch",
