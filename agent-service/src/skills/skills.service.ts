@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, OnModuleInit, ConflictException } from '@nestjs/common';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import * as yaml from 'js-yaml';
@@ -16,6 +16,7 @@ import {
 import { CreateSkillDto, UpdateSkillDto } from './dto/create-skill.dto';
 import { SkillExecutorService } from './skill-executor.service';
 import { SkillSchedulerService } from './skill-scheduler.service';
+import { TaskQueueService, TaskBusyError, TaskQueueStatus } from './task-queue.service';
 import { UpdateScheduleDto } from './dto/schedule.dto';
 
 const DEFAULT_PROMPT = `请根据以下网页内容生成一份结构化的 Markdown 笔记。要求：
@@ -39,6 +40,7 @@ export class SkillsService implements OnModuleInit {
     private readonly skillExecutorService: SkillExecutorService,
     private readonly executorTypesService: ExecutorTypesService,
     private readonly skillSchedulerService: SkillSchedulerService,
+    private readonly taskQueueService: TaskQueueService,
   ) {
     this.configPath = join(process.cwd(), 'config', 'skills.yaml');
     this.loadConfig();
@@ -47,6 +49,15 @@ export class SkillsService implements OnModuleInit {
   onModuleInit() {
     // Inject self into ExecutorTypesService for AgentHandler
     this.executorTypesService.setSkillsService(this);
+    
+    // Set up task executor callback for scheduled tasks
+    this.taskQueueService.setTaskExecutor(async (task) => {
+      const skill = this.getSkillById(task.skillId);
+      if (!skill) {
+        throw new Error(`Skill "${task.skillId}" not found`);
+      }
+      return this.skillSchedulerService.executeScheduledSkillDirectly(skill, task.userInputs);
+    });
     
     // Initialize scheduler with skills getter and start schedules
     this.skillSchedulerService.setSkillsGetter(() => this.getAllSkillDefinitions());
@@ -415,7 +426,14 @@ export class SkillsService implements OnModuleInit {
     this.logger.log(`Executing skill: ${id}, enabled: ${skill.enabled}`);
     this.logger.log(`User inputs: ${JSON.stringify(userInputs)}`);
 
-    return this.skillExecutorService.executeSkill(skill, userInputs);
+    try {
+      return await this.taskQueueService.executeManualTask(skill, userInputs);
+    } catch (error) {
+      if (error instanceof TaskBusyError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
   }
 
   getBuiltinVariables() {
@@ -482,7 +500,29 @@ export class SkillsService implements OnModuleInit {
       throw new BadRequestException(`Skill "${id}" is disabled`);
     }
 
-    return this.skillSchedulerService.triggerNow(skill);
+    // 手动触发也走任务队列
+    try {
+      return await this.taskQueueService.executeManualTask(skill, this.getDefaultInputs(skill));
+    } catch (error) {
+      if (error instanceof TaskBusyError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  private getDefaultInputs(skill: SkillDefinition): Record<string, any> {
+    const inputs: Record<string, any> = {};
+    skill.userInputs?.forEach(input => {
+      if (input.defaultValue !== undefined) {
+        inputs[input.name] = input.defaultValue;
+      }
+    });
+    return inputs;
+  }
+
+  getTaskQueueStatus(): TaskQueueStatus {
+    return this.taskQueueService.getStatus();
   }
 
   reloadSchedules(): void {

@@ -92,6 +92,11 @@ export class SkillsController {
     return this.skillsService.getExecutionHistory(skillId, limit ? parseInt(limit, 10) : undefined);
   }
 
+  @Get('task-queue/status')
+  getTaskQueueStatus() {
+    return this.skillsService.getTaskQueueStatus();
+  }
+
   @Get(':id/schedule')
   getSkillSchedule(@Param('id') id: string) {
     return this.skillsService.getSkillSchedule(id);

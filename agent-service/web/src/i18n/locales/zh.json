@@ -215,5 +215,14 @@
     "number": "数字",
     "checkbox": "复选框",
     "select": "下拉选择"
+  },
+  "taskQueue": {
+    "idle": "空闲",
+    "status": "任务队列",
+    "running": "执行中",
+    "queued": "排队中",
+    "scheduled": "定时",
+    "manual": "手动",
+    "busyError": "当前有任务正在执行，请稍候再试"
   }
 }

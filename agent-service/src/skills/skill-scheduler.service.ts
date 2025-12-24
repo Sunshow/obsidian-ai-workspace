@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import {
@@ -9,6 +9,7 @@ import {
   SkillExecutionResult,
 } from './interfaces/skill-definition.interface';
 import { SkillExecutorService } from './skill-executor.service';
+import { TaskQueueService, QueuedTask } from './task-queue.service';
 
 const MAX_HISTORY_RECORDS = 100;
 
@@ -22,6 +23,8 @@ export class SkillSchedulerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly skillExecutorService: SkillExecutorService,
+    @Inject(forwardRef(() => TaskQueueService))
+    private readonly taskQueueService: TaskQueueService,
   ) {}
 
   setSkillsGetter(getter: () => SkillDefinition[]) {
@@ -144,9 +147,8 @@ export class SkillSchedulerService implements OnModuleInit, OnModuleDestroy {
 
   private async executeScheduledSkill(skill: SkillDefinition): Promise<void> {
     const triggeredAt = new Date();
-    const recordId = `${skill.id}-${triggeredAt.getTime()}`;
 
-    this.logger.log(`Executing scheduled skill: ${skill.id}`);
+    this.logger.log(`Enqueuing scheduled skill: ${skill.id}`);
 
     // 从 userInputs 的 defaultValue 获取默认输入
     const defaultInputs: Record<string, any> = {};
@@ -155,6 +157,17 @@ export class SkillSchedulerService implements OnModuleInit, OnModuleDestroy {
         defaultInputs[input.name] = input.defaultValue;
       }
     });
+
+    // 通过队列执行，不直接执行
+    this.taskQueueService.enqueueScheduledTask(skill, defaultInputs);
+  }
+
+  async executeScheduledSkillDirectly(skill: SkillDefinition, userInputs: Record<string, any>): Promise<SkillExecutionResult> {
+    const triggeredAt = new Date();
+    const recordId = `${skill.id}-${triggeredAt.getTime()}`;
+
+    this.logger.log(`Executing scheduled skill directly: ${skill.id}`);
+
     let result: SkillExecutionResult;
     let retryCount = 0;
     const maxRetries = skill.schedule?.retryOnFailure ? (skill.schedule.maxRetries || 3) : 0;
@@ -164,7 +177,7 @@ export class SkillSchedulerService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Retrying skill ${skill.id}, attempt ${retryCount}/${maxRetries}`);
       }
 
-      result = await this.skillExecutorService.executeSkill(skill, defaultInputs);
+      result = await this.skillExecutorService.executeSkill(skill, userInputs);
 
       if (result.success || retryCount >= maxRetries) {
         break;
@@ -193,6 +206,8 @@ export class SkillSchedulerService implements OnModuleInit, OnModuleDestroy {
     } else {
       this.logger.error(`Scheduled skill ${skill.id} failed: ${result.error}`);
     }
+
+    return result;
   }
 
   async triggerNow(skill: SkillDefinition, userInputs?: Record<string, any>): Promise<SkillExecutionResult> {

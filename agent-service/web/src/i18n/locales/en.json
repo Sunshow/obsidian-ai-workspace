@@ -215,5 +215,14 @@
     "number": "Number",
     "checkbox": "Checkbox",
     "select": "Dropdown Select"
+  },
+  "taskQueue": {
+    "idle": "Idle",
+    "status": "Task Queue",
+    "running": "Running",
+    "queued": "Queued",
+    "scheduled": "Scheduled",
+    "manual": "Manual",
+    "busyError": "A task is currently running. Please try again later."
   }
 }

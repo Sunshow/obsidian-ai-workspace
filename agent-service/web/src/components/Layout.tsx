@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { TaskQueueStatus } from './TaskQueueStatus';
 import { useTheme } from '@/hooks/useTheme';
 
 export function Layout() {
@@ -12,6 +13,7 @@ export function Layout() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 border-b flex items-center justify-end px-4 gap-2">
+          <TaskQueueStatus />
           <a
             href="https://github.com/Sunshow/obsidian-ai-workspace"
             target="_blank"

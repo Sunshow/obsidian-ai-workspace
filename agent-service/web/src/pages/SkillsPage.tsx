@@ -486,6 +486,9 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
     setExecuting(true);
     setResult(null);
 
+    // Trigger task queue refresh immediately when starting execution
+    window.dispatchEvent(new CustomEvent('task-queue-refresh'));
+
     try {
       const res = await executeSkill(skillId, inputs);
       setResult(res);
@@ -503,6 +506,8 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
       });
     } finally {
       setExecuting(false);
+      // Trigger task queue refresh when execution completes
+      window.dispatchEvent(new CustomEvent('task-queue-refresh'));
     }
   };
 
