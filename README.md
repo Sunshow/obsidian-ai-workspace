@@ -40,6 +40,14 @@ AI 原生的智能工作空间。通过集成 AI Agent 和多种执行器，为 
 - **内置变量 (builtinVariables)** - 如当前日期、随机 ID 等
 - **执行步骤 (steps)** - 按顺序执行的动作链，每个步骤可引用前序步骤的输出
 - **模型选择** - 对于 Claude Code 执行器步骤，可单独指定使用的模型（预设 Opus 4.5 / Sonnet 4.5，也支持自定义）
+- **定时调度 (schedule)** - 可选，配置 Cron 表达式实现自动执行
+
+### 高级功能
+
+- **定时调度** - 技能支持配置 Cron 表达式实现定时自动执行
+- **任务队列** - 技能执行通过任务队列管理，支持状态跟踪和并发控制
+- **实时事件流** - 技能执行过程支持 SSE 实时推送执行状态和步骤进度
+- **步骤级模型配置** - 每个 Claude Code 执行器步骤可单独指定使用的模型
 
 ### 示例场景
 
@@ -188,6 +196,17 @@ docker compose up -d
 - [Playwright](https://playwright.dev/) - Microsoft 开源的跨浏览器自动化测试框架
 - [linuxserver/obsidian](https://github.com/linuxserver/docker-obsidian) - LinuxServer.io 提供的 Obsidian Docker 镜像
 - [jacoblincool/playwright-docker](https://github.com/JacobLinCool/playwright-docker) - 支持多架构的 Playwright Docker 镜像
+
+## 版本历史
+
+### v0.0.3 (2024-12-24)
+
+**新功能**
+- 定时调度 - 技能支持配置 Cron 表达式实现定时自动执行
+- 任务队列 - 技能执行通过任务队列管理，支持状态跟踪和并发控制
+- 实时事件流 - 技能执行过程支持 SSE 实时推送执行状态和步骤进度
+- 步骤级模型配置 - 每个 Claude Code 执行器步骤可单独指定使用的模型
+- 技能创建器升级 - 支持为技能创建器指定专用模型
 
 ## 许可证
 

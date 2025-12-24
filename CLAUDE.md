@@ -68,6 +68,8 @@ NestJS application managing executors and providing a skills workflow engine.
 - `src/executors/` - Executor CRUD and health monitoring
 - `src/executor-types/` - Handler implementations (claudecode, playwright, puppeteer, agent)
 - `src/skills/` - Workflow engine with YAML-defined skills
+- `src/skills/skill-scheduler.service.ts` - Cron/interval scheduling for skills
+- `src/skills/task-queue.service.ts` - Task queue for sequential execution
 
 **API Endpoints:**
 - `GET /api/executors` - List executors
@@ -76,8 +78,14 @@ NestJS application managing executors and providing a skills workflow engine.
 - `GET /api/executor-types` - List supported executor types
 - `GET /api/skills` - List available skills
 - `POST /api/skills/:id/execute` - Execute a skill with user inputs
+- `GET /api/skills/:id/execute-stream` - Execute skill with SSE event streaming
 - `GET /api/skills/definitions` - Get all skill definitions
 - `POST /api/skills/smart-fetch` - Built-in web clip workflow
+- `GET /api/skills/schedules` - Get all skill schedule statuses
+- `GET /api/skills/schedules/history` - Get execution history
+- `GET /api/skills/task-queue/status` - Get task queue status
+- `PUT /api/skills/:id/schedule` - Update skill schedule
+- `POST /api/skills/:id/schedule/trigger` - Manually trigger scheduled skill
 
 **Configuration:**
 - `config/executors.yaml` - Executor instances configuration
@@ -142,10 +150,12 @@ skills:
         label: Input Label
         type: text|textarea|number|checkbox|select
         required: true
+        defaultValue: 'optional default'  # Used for scheduled execution
     steps:
       - id: step1
         executorType: playwright|claudecode|agent
         action: fetch|screenshot|chat|register-skill
+        model: claude-sonnet-4-5-20250929  # Optional: override model for claudecode steps
         params:
           url: '{{url}}'
         outputVariable: result1
@@ -156,12 +166,32 @@ skills:
           messages:
             - role: user
               content: 'Process: {{result1.data.textContent}}'
+    schedule:                              # Optional: scheduled execution
+      enabled: true
+      cron: '0 9 * * *'                    # Cron expression (daily at 9am)
+      # interval: 3600000                  # OR fixed interval in ms
+      timezone: 'Asia/Shanghai'            # Optional, default: Asia/Shanghai
+      retryOnFailure: true                 # Optional: retry on failure
+      maxRetries: 3                        # Optional: max retry count
 ```
 
 **Variable Reference:**
 - User inputs: `{{inputName}}`
-- Built-in: `{{currentDate}}`, `{{currentDatetime}}`, `{{randomId}}`
+- Built-in: `{{currentDate}}`, `{{currentTime}}`, `{{currentDatetime}}`, `{{randomId}}`
 - Step outputs: `{{outputVar.data.xxx}}` (all returns wrapped in `data` field)
+
+**Step Model Override:**
+- Each step with `executorType: claudecode` can specify a `model` field to override the default model
+- The built-in `skill-creator` skill uses `SKILL_CREATOR_MODEL` env var (defaults to claude-opus-4-5-20251101)
+
+**Task Queue System:**
+- Manual skill executions block concurrent execution (returns TaskBusyError if busy)
+- Scheduled skill executions are queued and processed sequentially
+- Queue status available via `/api/skills/task-queue/status` endpoint
+
+**Real-time Event Streaming:**
+- Use SSE endpoint `GET /api/skills/:id/execute-stream?userInputs=<base64>` for real-time progress
+- Events: `step-start`, `step-complete`, `step-error`, `execution-complete`, `execution-error`
 
 ## Environment Variables
 
@@ -172,6 +202,7 @@ Copy `.env.example` to `.env`:
 | `ANTHROPIC_AUTH_TOKEN` | Claude API key | - |
 | `ANTHROPIC_BASE_URL` | API base URL (optional) | - |
 | `CLAUDE_DEFAULT_MODEL` | Default model | claude-sonnet-4-5-20250929 |
+| `SKILL_CREATOR_MODEL` | Model for skill-creator skill | claude-opus-4-5-20251101 |
 
 ## Port Mapping
 
