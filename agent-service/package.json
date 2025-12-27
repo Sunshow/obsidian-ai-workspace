@@ -25,6 +25,7 @@
     "js-yaml": "^4.1.0",
     "jsdom": "^25.0.1",
     "playwright-core": "1.56.0",
+    "push-all-in-one": "^4.5.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1"
   },

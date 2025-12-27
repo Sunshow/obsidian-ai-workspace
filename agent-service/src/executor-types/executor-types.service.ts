@@ -4,25 +4,31 @@ import { ClaudeCodeHandler } from './handlers/claudecode.handler';
 import { PuppeteerHandler } from './handlers/puppeteer.handler';
 import { PlaywrightHandler } from './handlers/playwright.handler';
 import { AgentHandler } from './handlers/agent.handler';
+import { NotificationHandler } from './handlers/notification.handler';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ExecutorTypesService {
   private readonly logger = new Logger(ExecutorTypesService.name);
   private readonly handlers: Map<string, ExecutorTypeHandler> = new Map();
   private agentHandler: AgentHandler;
+  private notificationHandler: NotificationHandler;
 
-  constructor() {
+  constructor(private readonly notificationsService: NotificationsService) {
     this.registerBuiltInHandlers();
   }
 
   private registerBuiltInHandlers() {
     this.agentHandler = new AgentHandler();
+    this.notificationHandler = new NotificationHandler();
+    this.notificationHandler.setNotificationsService(this.notificationsService);
     
     const builtInHandlers: ExecutorTypeHandler[] = [
       new ClaudeCodeHandler(),
       new PuppeteerHandler(),
       new PlaywrightHandler(),
       this.agentHandler,
+      this.notificationHandler,
     ];
 
     for (const handler of builtInHandlers) {

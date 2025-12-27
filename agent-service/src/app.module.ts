@@ -7,6 +7,7 @@ import { AppConfigModule } from './config/config.module';
 import { ExecutorTypesModule } from './executor-types/executor-types.module';
 import { ExecutorsModule } from './executors/executors.module';
 import { SkillsModule } from './skills/skills.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { HealthController } from './health/health.controller';
 import configuration from './config/configuration';
 
@@ -22,6 +23,7 @@ import configuration from './config/configuration';
       exclude: ['/api*', '/health*'],
     }),
     AppConfigModule,
+    NotificationsModule,
     ExecutorTypesModule,
     ExecutorsModule,
     SkillsModule,

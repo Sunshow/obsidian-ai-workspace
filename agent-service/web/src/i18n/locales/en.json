@@ -33,6 +33,7 @@
     "executors": "Executors",
     "obsidian": "Obsidian",
     "skills": "Skills",
+    "notifications": "Notifications",
     "settings": "Settings",
     "manageSkills": "Manage Skills"
   },
@@ -229,5 +230,29 @@
     "scheduled": "Scheduled",
     "manual": "Manual",
     "busyError": "A task is currently running. Please try again later."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Manage notification channels",
+    "addChannel": "Add Channel",
+    "editChannel": "Edit Channel",
+    "addChannelDesc": "Configure a new notification channel",
+    "editChannelDesc": "Modify channel configuration",
+    "noChannels": "No notification channels configured",
+    "addFirst": "Add Your First Channel",
+    "testChannel": "Test",
+    "testSuccess": "Test notification sent successfully",
+    "testFailed": "Failed to send test notification",
+    "deleteConfirm": "Delete channel \"{{name}}\"?",
+    "form": {
+      "id": "Channel ID",
+      "idPlaceholder": "e.g. dingtalk-1",
+      "type": "Channel Type",
+      "name": "Display Name",
+      "namePlaceholder": "Optional display name",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional description",
+      "config": "Channel Configuration"
+    }
   }
 }

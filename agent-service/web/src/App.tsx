@@ -7,6 +7,7 @@ import SkillsPage from './pages/SkillsPage';
 import SkillsListPage from './pages/SkillsListPage';
 import SkillEditorPage from './pages/SkillEditorPage';
 import SettingsPage from './pages/SettingsPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="executors" element={<ExecutorsPage />} />
           <Route path="obsidian" element={<ObsidianPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="skills" element={<SkillsListPage />} />
           <Route path="skills/new" element={<SkillEditorPage />} />
           <Route path="skills/:skillId/edit" element={<SkillEditorPage />} />
