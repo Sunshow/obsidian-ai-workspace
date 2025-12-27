@@ -199,6 +199,17 @@ docker compose up -d
 
 ## 版本历史
 
+### v0.0.4 (2025-12-27)
+
+**新功能**
+- 通知管理系统 - 新增通知渠道管理模块，支持 17 种推送渠道（Server酱、钉钉、企业微信、飞书、PushPlus、WxPusher、iGot、Qmsg、息知、PushDeer、Discord、OneBot、Telegram、Ntfy、Email 等）
+- WebUI 新增通知渠道管理页面，支持渠道的增删改查、测试发送和默认渠道设置
+- 新增 `notification` 执行器类型，可在技能步骤中发送通知，实现任务完成后自动推送
+
+**优化**
+- Playwright 执行器页面导航新增自动降级机制（networkidle -> load -> domcontentloaded），提升对慢速网页的兼容性
+- 技能变量模板优化：未匹配的 `{{xxx}}` 变量模板自动清理为空字符串
+
 ### v0.0.3 (2025-12-24)
 
 **新功能**
