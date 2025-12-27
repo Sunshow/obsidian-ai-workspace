@@ -7,6 +7,17 @@ import { SendNotificationResponse, ChannelInfo, NotificationChannel } from './in
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+  @Get('default-channel')
+  getDefaultChannel(): { defaultChannel: string | null } {
+    return { defaultChannel: this.notificationsService.getDefaultChannel() };
+  }
+
+  @Put('default-channel/:id')
+  setDefaultChannel(@Param('id') id: string): { defaultChannel: string } {
+    this.notificationsService.setDefaultChannel(id);
+    return { defaultChannel: id };
+  }
+
   @Get('channels')
   getChannels(): ChannelInfo[] {
     return this.notificationsService.getChannels();

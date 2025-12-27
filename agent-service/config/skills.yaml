@@ -185,19 +185,27 @@ skills:
           system_prompt: 你是一个精确的需求分析器，只输出 JSON 数组格式，不输出任何额外内容。
           messages:
             - role: user
-              content: |
+              content: >
                 # 任务：分析用户输入参数
+
 
                 分析以下需求需要用户提供哪些输入参数。
 
+
                 ## 用户需求
+
                 {{requirement}}
 
+
                 ## 输出格式
+
                 输出一个 JSON 数组，包含所有需要用户输入的参数。
+
                 不要输出 markdown 代码块，只输出纯 JSON 数组。
 
+
                 每个参数格式：
+
                 {
                   "name": "参数名（英文，camelCase）",
                   "label": "标签（中文）",
@@ -210,31 +218,59 @@ skills:
                   "options": [{"label":"选项","value":"值"}]  // 仅 select 类型需要
                 }
 
+
                 ## 常见参数类型
+
                 - URL输入: type="text", required=true
+
                 - 长文本: type="textarea"
+
                 - 保存路径: type="text", defaultValue="/vaults/notes/"
+
                 - 开关选项: type="checkbox", defaultValue=true/false
+
                 - 下拉选择: type="select", 需提供 options
 
+
                 ## 重要限制（必须遵守）
+
                 以下功能系统不支持，禁止生成相关参数：
+
                 - ❌ 数据库操作 - 系统无此能力
+
                 - ❌ 外部 API 调用（除 playwright 抓取网页）- 系统无此能力
+
                 - ❌ Webhook 回调 - 系统无此能力
+
                 - ❌ 条件触发/事件监听 - 系统无此能力
 
+
                 只能生成与以下能力相关的参数：
+
                 - 网页 URL（用于 playwright 抓取）
+
                 - 文件/目录路径（用于保存到 /vaults）
+
                 - 文本内容（用于 AI 处理）
+
                 - 简单开关（控制流程分支，如是否保存文件）
-                - 通知渠道 ID（用于 notification 发送通知）
+
+
+                ## 特殊参数类型
+
+                - 通知渠道选择：使用 type="select" +
+                optionsSource="notification-channels"
+                  不需要手动填写 options，系统会自动加载可用渠道列表
+                  示例：{"name":"notificationChannel","label":"通知渠道","type":"select","optionsSource":"notification-channels","required":false}
 
                 ## 输出要求
+
                 1. 只输出 JSON 数组，不要有其他内容
+
                 2. 如果不需要任何用户输入，输出空数组: []
+
                 3. 参数 name 使用 camelCase 命名
+
                 4. 不要生成任何与不支持功能相关的参数
         outputVariable: inputsResult
       - id: analyze-steps
@@ -246,29 +282,44 @@ skills:
           system_prompt: 你是一个精确的工作流设计器，只输出 JSON 数组格式，不输出任何额外内容。
           messages:
             - role: user
-              content: |
+              content: >
                 # 任务：设计执行步骤
+
 
                 根据用户需求和已分析的输入参数，设计技能的执行步骤。
 
+
                 ## 用户需求
+
                 {{requirement}}
 
+
                 ## 已分析的用户输入参数
+
                 {{inputsResult.data.choices.0.message.content}}
 
+
                 ## 重要限制（设计前必读）
+
                 以下功能系统不支持，禁止设计相关步骤：
+
                 - ❌ 数据库读写 - 无此执行器，不要设计
+
                 - ❌ 调用外部 API（除网页抓取）- 无此执行器，不要设计
+
                 - ❌ Webhook/回调 - 无此执行器，不要设计
+
 
                 如果用户需求包含上述功能，只实现可行部分，不要尝试实现不支持的功能。
 
+
                 ## 可用的执行器和动作（只能使用以下列出的）
 
+
                 ### claudecode (Claude Code Executor)
+
                 适用于：文本生成、内容分析、代码生成、文件操作
+
                 - **chat**: OpenAI 兼容格式对话
                   - messages: [{role: "user", content: "..."}]
                   - stream: false
@@ -276,31 +327,46 @@ skills:
                   - system_prompt: "系统提示词"
                 - 返回格式: {{outputVar.data.choices.0.message.content}}
 
+
                 ### playwright (Playwright Executor)
+
                 适用于：网页抓取和截图
+
                 - **fetch**: 抓取网页内容
                   - url: 网页URL
                   - waitUntil: networkidle
                   - timeout: 30000
                 - 返回: {{outputVar.data.title}}, {{outputVar.data.textContent}}
+
                 - **screenshot**: 网页截图
                   - url, fullPage, savePath, fileName
                 - 返回: {{outputVar.data.fileName}}
 
+
                 ### notification (Notification Pusher)
+
                 适用于：发送通知到各种渠道（钉钉、企业微信、飞书、Telegram、Discord、邮件等）
+
                 - **send**: 发送通知
-                  - channel: 通知渠道ID（如 dingtalk-1, telegram-1）
+                  - channel: 通知渠道ID，使用 {{notificationChannel}} 引用用户选择的渠道，留空使用默认渠道
                   - title: 通知标题
                   - content: 通知内容（可选）
                   - options: 额外选项（可选，根据渠道类型不同）
                 - 返回: {{outputVar.data.success}}, {{outputVar.data.message}}
 
+                - 重要：如果需要用户选择通知渠道，在 userInputs 中使用
+                optionsSource="notification-channels" 的 select 类型
+
+
                 ## 输出格式
+
                 输出一个 JSON 数组，包含所有执行步骤。
+
                 不要输出 markdown 代码块，只输出纯 JSON 数组。
 
+
                 每个步骤格式：
+
                 {
                   "id": "step1",
                   "name": "步骤名称（中文）",
@@ -312,16 +378,26 @@ skills:
                   "outputVariable": "result1"
                 }
 
+
                 ## 变量引用规则
+
                 - 用户输入: {{inputName}}
+
                 - 内置变量: {{currentDate}}, {{currentDatetime}}, {{randomId}}
+
                 - 步骤输出: {{outputVar.data.xxx}}
 
+
                 ## 输出要求
+
                 1. 只输出 JSON 数组
+
                 2. 步骤 id 使用 step1, step2... 或描述性名称
+
                 3. outputVariable 用于存储步骤结果，供后续步骤引用
+
                 4. executorType 只能是 claudecode、playwright 或 notification
+
                 5. 不要设计任何数据库、外部API相关的步骤
         outputVariable: stepsResult
       - id: assemble-skill
@@ -333,24 +409,35 @@ skills:
           system_prompt: 你是一个 JSON 组装器，将各部分组合成完整的技能定义 JSON。只输出纯 JSON，不要 markdown 代码块。
           messages:
             - role: user
-              content: |
+              content: >
                 # 任务：组装完整技能定义
+
 
                 将前几轮分析的结果组装成完整的技能定义 JSON。
 
+
                 ## 用户需求
+
                 {{requirement}}
 
+
                 ## 用户指定的技能名称
+
                 {{skillName}}
 
+
                 ## 已分析的用户输入参数
+
                 {{inputsResult.data.choices.0.message.content}}
 
+
                 ## 已设计的执行步骤
+
                 {{stepsResult.data.choices.0.message.content}}
 
+
                 ## 技能定义模板
+
                 {
                   "id": "技能ID（英文小写，连字符分隔，如 my-skill）",
                   "name": "技能名称（中文，如用户指定则使用指定名称）",
@@ -371,17 +458,29 @@ skills:
                   "steps": [/* 上面设计的执行步骤 */]
                 }
 
+
                 ## 输出要求
+
                 1. 只输出完整的 JSON 对象，不要 markdown 代码块
+
                 2. 必须包含 id 字段（英文小写，连字符分隔）
+
                 3. 不要包含 schedule 字段（定时配置单独处理）
+
                 4. 确保 JSON 格式正确，可以直接解析
+
                 5. 如果用户指定了技能名称，使用指定的名称
+
                 6. 根据步骤实际使用情况设置 builtinVariables
 
+
                 ## 最终校验（组装前必须确认）
-                - 所有 steps 的 executorType 只能是 claudecode、playwright 或 notification
+
+                - 所有 steps 的 executorType 只能是 claudecode、playwright 或
+                notification
+
                 - userInputs 中不能有数据库/外部API等不支持功能的参数
+
                 - 如有用户需求包含不支持的功能，在 description 中注明"部分功能暂不支持"
         outputVariable: skillDefinition
       - id: register-skill

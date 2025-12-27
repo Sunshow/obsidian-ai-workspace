@@ -244,6 +244,7 @@
     "testSuccess": "Test notification sent successfully",
     "testFailed": "Failed to send test notification",
     "deleteConfirm": "Delete channel \"{{name}}\"?",
+    "setDefault": "Set as Default",
     "form": {
       "id": "Channel ID",
       "idPlaceholder": "e.g. dingtalk-1",

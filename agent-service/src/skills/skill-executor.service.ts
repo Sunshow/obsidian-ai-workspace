@@ -137,6 +137,9 @@ export class SkillExecutorService {
         }
       }
 
+      // Clean up any unreplaced variable templates {{xxx}}, replace with empty string
+      result = result.replace(/\{\{[^}]+\}\}/g, '');
+
       return result;
     }
 
@@ -259,19 +262,19 @@ export class SkillExecutorService {
 
           let result: any;
 
-          // Check if this is an agent (built-in) executor type
-          if (step.executorType === 'agent') {
-            const handler = this.executorTypesService.getHandler('agent');
+          // Check if this is a built-in executor type (agent, notification)
+          if (step.executorType === 'agent' || step.executorType === 'notification') {
+            const handler = this.executorTypesService.getHandler(step.executorType);
             if (!handler) {
-              throw new Error('Agent handler not found');
+              throw new Error(`${step.executorType} handler not found`);
             }
             
             this.logger.log(
-              `Executing step ${step.id}: ${step.name} with built-in agent handler`,
+              `Executing step ${step.id}: ${step.name} with built-in ${step.executorType} handler`,
             );
             
             result = await handler.invoke(
-              { name: 'agent', type: 'agent', endpoint: '', healthPath: '', enabled: true } as any,
+              { name: step.executorType, type: step.executorType, endpoint: '', healthPath: '', enabled: true } as any,
               step.action,
               params,
             );
@@ -475,13 +478,13 @@ export class SkillExecutorService {
 
           let result: any;
 
-          if (step.executorType === 'agent') {
-            const handler = this.executorTypesService.getHandler('agent');
+          if (step.executorType === 'agent' || step.executorType === 'notification') {
+            const handler = this.executorTypesService.getHandler(step.executorType);
             if (!handler) {
-              throw new Error('Agent handler not found');
+              throw new Error(`${step.executorType} handler not found`);
             }
             result = await handler.invoke(
-              { name: 'agent', type: 'agent', endpoint: '', healthPath: '', enabled: true } as any,
+              { name: step.executorType, type: step.executorType, endpoint: '', healthPath: '', enabled: true } as any,
               step.action,
               params,
             );

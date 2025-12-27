@@ -5,9 +5,10 @@ import { SkillExecutorService } from './skill-executor.service';
 import { SkillSchedulerService } from './skill-scheduler.service';
 import { TaskQueueService } from './task-queue.service';
 import { ExecutorsModule } from '../executors/executors.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [forwardRef(() => ExecutorsModule)],
+  imports: [forwardRef(() => ExecutorsModule), NotificationsModule],
   controllers: [SkillsController],
   providers: [SkillsService, SkillExecutorService, SkillSchedulerService, TaskQueueService],
   exports: [SkillsService, SkillExecutorService, SkillSchedulerService, TaskQueueService],

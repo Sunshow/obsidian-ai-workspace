@@ -85,7 +85,7 @@ export class AgentHandler extends BaseExecutorHandler {
         }
 
         // Validate executorType
-        const validExecutorTypes = ['claudecode', 'playwright', 'puppeteer', 'agent'];
+        const validExecutorTypes = ['claudecode', 'playwright', 'puppeteer', 'agent', 'notification'];
         if (!fixedStep.executorType || !validExecutorTypes.includes(fixedStep.executorType)) {
           errors.push(`步骤 "${fixedStep.id}" 的 executorType "${fixedStep.executorType}" 无效，支持: ${validExecutorTypes.join(', ')}`);
         }

@@ -72,6 +72,7 @@ export interface UserInputField {
   defaultValue?: any;
   required?: boolean;
   options?: UserInputOption[];
+  optionsSource?: string;  // 动态选项来源，如 'notification-channels'
   validation?: UserInputValidation;
 }
 
@@ -233,6 +234,12 @@ export async function fetchBuiltinVariables(): Promise<BuiltinVariableInfo[]> {
   return res.json();
 }
 
+export async function fetchDynamicOptions(source: string): Promise<UserInputOption[]> {
+  const res = await fetch(`${API_BASE}/options/${source}`);
+  if (!res.ok) throw new Error('Failed to fetch dynamic options');
+  return res.json();
+}
+
 export async function fetchSkillDefinitions(): Promise<SkillDefinition[]> {
   const res = await fetch(`${API_BASE}/definitions`);
   if (!res.ok) throw new Error('Failed to fetch skill definitions');
@@ -298,8 +305,10 @@ export function executeSkillStream(
   userInputs: Record<string, any>,
   callbacks: SkillStreamCallbacks
 ): { cancel: () => void } {
-  // Encode userInputs as base64 for query parameter
-  const userInputsBase64 = btoa(JSON.stringify(userInputs));
+  // Encode userInputs as base64 for query parameter (supports Unicode)
+  const userInputsBase64 = btoa(
+    String.fromCharCode(...new TextEncoder().encode(JSON.stringify(userInputs)))
+  );
   const url = `${API_BASE}/${id}/execute-stream?userInputs=${encodeURIComponent(userInputsBase64)}`;
   
   const eventSource = new EventSource(url);

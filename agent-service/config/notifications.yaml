@@ -1,7 +1,0 @@
-notifications:
-  channels:
-    - id: serverchan
-      type: serverchan-turbo
-      enabled: true
-      config:
-        SERVER_CHAN_TURBO_SENDKEY: SCT107890TA-g5DceL3H9tgFNbEJXq6qUwTf

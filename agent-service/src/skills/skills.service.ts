@@ -13,12 +13,14 @@ import {
   SkillSchedule,
   ScheduleStatus,
   ExecutionRecord,
+  UserInputOption,
 } from './interfaces/skill-definition.interface';
 import { CreateSkillDto, UpdateSkillDto } from './dto/create-skill.dto';
 import { SkillExecutorService } from './skill-executor.service';
 import { SkillSchedulerService } from './skill-scheduler.service';
 import { TaskQueueService, TaskBusyError, TaskQueueStatus } from './task-queue.service';
 import { UpdateScheduleDto } from './dto/schedule.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const DEFAULT_PROMPT = `请根据以下网页内容生成一份结构化的 Markdown 笔记。要求：
 1. 提取关键信息和要点
@@ -42,6 +44,7 @@ export class SkillsService implements OnModuleInit {
     private readonly executorTypesService: ExecutorTypesService,
     private readonly skillSchedulerService: SkillSchedulerService,
     private readonly taskQueueService: TaskQueueService,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.configPath = join(process.cwd(), 'config', 'skills.yaml');
     this.loadConfig();
@@ -549,5 +552,35 @@ export class SkillsService implements OnModuleInit {
     this.skillSchedulerService.clearAllSchedules();
     this.skillSchedulerService.initializeSchedules();
     this.logger.log('Schedules reloaded');
+  }
+
+  /**
+   * Get dynamic options for a given source
+   * Supported sources: 'notification-channels'
+   */
+  getDynamicOptions(source: string): UserInputOption[] {
+    switch (source) {
+      case 'notification-channels': {
+        const channels = this.notificationsService.getEnabledChannels();
+        const defaultChannel = this.notificationsService.getDefaultChannel();
+        
+        const options: UserInputOption[] = [
+          { label: '默认渠道', value: '' },  // Empty value means use default
+        ];
+        
+        channels.forEach((ch) => {
+          const isDefault = ch.id === defaultChannel;
+          options.push({
+            label: isDefault ? `${ch.name || ch.id} (默认)` : (ch.name || ch.id),
+            value: ch.id,
+          });
+        });
+        
+        return options;
+      }
+      default:
+        this.logger.warn(`Unknown options source: ${source}`);
+        return [];
+    }
   }
 }

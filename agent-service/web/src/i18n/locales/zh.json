@@ -244,6 +244,7 @@
     "testSuccess": "测试通知发送成功",
     "testFailed": "测试通知发送失败",
     "deleteConfirm": "确定删除渠道 \"{{name}}\"？",
+    "setDefault": "设为默认",
     "form": {
       "id": "渠道 ID",
       "idPlaceholder": "例如 dingtalk-1",

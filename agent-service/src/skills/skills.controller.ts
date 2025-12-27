@@ -26,6 +26,11 @@ export class SkillsController {
     return this.skillsService.getBuiltinVariables();
   }
 
+  @Get('options/:source')
+  getDynamicOptions(@Param('source') source: string) {
+    return this.skillsService.getDynamicOptions(source);
+  }
+
   @Get('definitions')
   getAllSkillDefinitions() {
     return this.skillsService.getAllSkillDefinitions();

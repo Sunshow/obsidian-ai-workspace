@@ -17,9 +17,11 @@ import {
   fetchSkillDefinition,
   executeSkillStream,
   saveSkillDefaultInputs,
+  fetchDynamicOptions,
   Skill,
   SkillDefinition,
   SkillExecutionResult,
+  UserInputOption,
 } from '@/api/skills';
 import { fetchExecutors, Executor } from '@/api/executors';
 import { getLocalizedSkillName, getLocalizedSkillDescription, getLocalizedUserInput } from '@/hooks/useLocalizedSkill';
@@ -442,11 +444,12 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
   const [loading, setLoading] = useState(true);
   const [showRawOutput, setShowRawOutput] = useState(false);
   const [stepStatuses, setStepStatuses] = useState<StepStatus[]>([]);
+  const [dynamicOptions, setDynamicOptions] = useState<Record<string, UserInputOption[]>>({});
   const cancelRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     fetchSkillDefinition(skillId)
-      .then((def) => {
+      .then(async (def) => {
         setDefinition(def);
         // Initialize with field default values
         const defaults: Record<string, any> = {};
@@ -456,6 +459,25 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
           }
         });
         setInputs(defaults);
+        
+        // Load dynamic options for inputs with optionsSource
+        const optionsSources = def?.userInputs
+          ?.filter((input) => input.optionsSource)
+          .map((input) => input.optionsSource!) || [];
+        const uniqueSources = [...new Set(optionsSources)];
+        
+        const optionsMap: Record<string, UserInputOption[]> = {};
+        await Promise.all(
+          uniqueSources.map(async (source) => {
+            try {
+              optionsMap[source] = await fetchDynamicOptions(source);
+            } catch (err) {
+              console.error(`Failed to load options for ${source}:`, err);
+              optionsMap[source] = [];
+            }
+          })
+        );
+        setDynamicOptions(optionsMap);
       })
       .catch((err) => console.error('Failed to load skill definition:', err))
       .finally(() => setLoading(false));
@@ -682,7 +704,7 @@ function CustomSkillRunner({ skillId, skill }: { skillId: string; skill: Skill }
                   disabled={executing}
                 >
                   <option value="">{t('common.select')}...</option>
-                  {input.options?.map((opt) => (
+                  {(input.optionsSource ? dynamicOptions[input.optionsSource] : input.options)?.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>

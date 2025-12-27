@@ -29,6 +29,7 @@ export interface UserInputField {
   defaultValue?: any;
   required?: boolean;
   options?: UserInputOption[];
+  optionsSource?: string;  // 动态选项来源，如 'notification-channels'
   validation?: UserInputValidation;
 }
 

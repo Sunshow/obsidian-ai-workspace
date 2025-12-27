@@ -37,6 +37,7 @@ export interface NotificationChannel {
  */
 export interface NotificationConfig {
   notifications: {
+    defaultChannel?: string;
     channels: NotificationChannel[];
   };
 }

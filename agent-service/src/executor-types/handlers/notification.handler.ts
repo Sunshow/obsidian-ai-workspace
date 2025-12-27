@@ -28,8 +28,8 @@ export class NotificationHandler extends BaseExecutorHandler {
           {
             name: 'channel',
             type: 'string',
-            required: true,
-            description: '通知渠道 ID',
+            required: false,
+            description: '通知渠道 ID（可选，留空使用默认渠道）',
             example: 'dingtalk-1',
           },
           {
@@ -94,13 +94,18 @@ export class NotificationHandler extends BaseExecutorHandler {
       };
     }
 
-    const { channel, title, content, options } = params;
+    let { channel, title, content, options } = params;
 
-    if (!channel) {
-      return {
-        success: false,
-        error: 'Missing required parameter: channel',
-      };
+    // Support default channel: if channel is empty, 'default', or not specified
+    if (!channel || channel === 'default') {
+      const defaultChannel = this.notificationsService.getDefaultChannel();
+      if (!defaultChannel) {
+        return {
+          success: false,
+          error: 'No channel specified and no default channel configured',
+        };
+      }
+      channel = defaultChannel;
     }
 
     if (!title) {

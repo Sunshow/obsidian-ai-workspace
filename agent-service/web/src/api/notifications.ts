@@ -131,6 +131,20 @@ export async function reloadConfig(): Promise<void> {
   if (!res.ok) throw new Error('Failed to reload config');
 }
 
+export async function getDefaultChannel(): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/default-channel`);
+  if (!res.ok) throw new Error('Failed to get default channel');
+  const data = await res.json();
+  return data.defaultChannel;
+}
+
+export async function setDefaultChannel(id: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/default-channel/${id}`, { method: 'PUT' });
+  if (!res.ok) throw new Error('Failed to set default channel');
+  const data = await res.json();
+  return data.defaultChannel;
+}
+
 // Channel type configurations for form rendering
 export const CHANNEL_TYPES: {
   type: NotificationChannelType;

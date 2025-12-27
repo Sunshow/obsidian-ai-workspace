@@ -90,6 +90,24 @@ export class NotificationsService {
     return this.getChannels().filter((ch) => ch.enabled);
   }
 
+  getDefaultChannel(): string | null {
+    return this.config.notifications?.defaultChannel || null;
+  }
+
+  setDefaultChannel(channelId: string): void {
+    const channel = this.getChannelById(channelId);
+    if (!channel) {
+      throw new NotFoundException(`Notification channel "${channelId}" not found`);
+    }
+
+    if (!this.config.notifications) {
+      this.config.notifications = { channels: [] };
+    }
+    this.config.notifications.defaultChannel = channelId;
+    this.saveConfig();
+    this.logger.log(`Set default notification channel to: ${channelId}`);
+  }
+
   private getChannelById(channelId: string): NotificationChannel | undefined {
     return (this.config.notifications?.channels || []).find((ch) => ch.id === channelId);
   }
@@ -287,6 +305,13 @@ export class NotificationsService {
     };
 
     this.config.notifications.channels.push(newChannel);
+
+    // Auto-set as default if this is the first channel
+    if (this.config.notifications.channels.length === 1) {
+      this.config.notifications.defaultChannel = newChannel.id;
+      this.logger.log(`Auto-set first channel "${newChannel.id}" as default`);
+    }
+
     this.saveConfig();
 
     this.logger.log(`Created notification channel: ${channel.id}`);
@@ -323,6 +348,13 @@ export class NotificationsService {
     }
 
     channels.splice(index, 1);
+
+    // Clear default if deleted channel was the default
+    if (this.config.notifications?.defaultChannel === channelId) {
+      this.config.notifications.defaultChannel = undefined;
+      this.logger.log(`Cleared default channel as "${channelId}" was deleted`);
+    }
+
     this.saveConfig();
 
     this.logger.log(`Deleted notification channel: ${channelId}`);

@@ -235,6 +235,38 @@ export class PlaywrightHandler extends BaseExecutorHandler {
     }
   }
 
+  /**
+   * Navigate to URL with automatic fallback on timeout.
+   * Fallback order: networkidle -> load -> domcontentloaded
+   */
+  private async navigateWithFallback(
+    page: Page,
+    url: string,
+    waitUntil: 'domcontentloaded' | 'load' | 'networkidle',
+    timeout: number,
+  ): Promise<void> {
+    const fallbackOrder: Array<'domcontentloaded' | 'load' | 'networkidle'> = ['networkidle', 'load', 'domcontentloaded'];
+    
+    const startIndex = fallbackOrder.indexOf(waitUntil);
+    const strategies = startIndex >= 0 ? fallbackOrder.slice(startIndex) : [waitUntil];
+    
+    for (let i = 0; i < strategies.length; i++) {
+      const strategy = strategies[i];
+      try {
+        await page.goto(url, { waitUntil: strategy, timeout });
+        return;
+      } catch (error) {
+        const isTimeout = error instanceof Error && error.message.includes('Timeout');
+        const isLastStrategy = i === strategies.length - 1;
+        
+        if (!isTimeout || isLastStrategy) {
+          throw error;
+        }
+        console.log(`[Playwright] ${strategy} timeout, falling back to ${strategies[i + 1]}`);
+      }
+    }
+  }
+
   private async handleFetch(
     page: Page,
     params: { url: string; includeHtml?: boolean; waitUntil?: string; useReadability?: boolean },
@@ -250,7 +282,7 @@ export class PlaywrightHandler extends BaseExecutorHandler {
       return { success: false, error: 'URL is required' };
     }
 
-    await page.goto(url, { waitUntil, timeout });
+    await this.navigateWithFallback(page, url, waitUntil, timeout);
 
     // Wait for actual content to load (handles Cloudflare and JS-rendered pages)
     try {
@@ -341,7 +373,7 @@ export class PlaywrightHandler extends BaseExecutorHandler {
       return { success: false, error: 'URL is required' };
     }
 
-    await page.goto(url, { waitUntil, timeout });
+    await this.navigateWithFallback(page, url, waitUntil, timeout);
 
     const screenshot = await page.screenshot({
       fullPage,

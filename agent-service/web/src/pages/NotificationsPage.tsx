@@ -10,6 +10,8 @@ import {
   deleteChannel,
   toggleChannel,
   testChannel,
+  getDefaultChannel,
+  setDefaultChannel,
   CHANNEL_TYPES,
 } from '@/api/notifications';
 import { Button } from '@/components/ui/button';
@@ -33,12 +35,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, Plus, Trash2, Send, Edit, Bell } from 'lucide-react';
+import { RefreshCw, Plus, Trash2, Send, Edit, Bell, Star } from 'lucide-react';
 
 export default function NotificationsPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
+  const [defaultChannelId, setDefaultChannelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<NotificationChannel | null>(null);
@@ -55,8 +58,12 @@ export default function NotificationsPage() {
 
   const loadChannels = useCallback(async () => {
     try {
-      const data = await fetchChannels();
-      setChannels(data);
+      const [channelsData, defaultChannel] = await Promise.all([
+        fetchChannels(),
+        getDefaultChannel(),
+      ]);
+      setChannels(channelsData);
+      setDefaultChannelId(defaultChannel);
     } catch (error) {
       console.error('Failed to load channels:', error);
     } finally {
@@ -84,8 +91,21 @@ export default function NotificationsPage() {
     try {
       await deleteChannel(id);
       setChannels((prev) => prev.filter((ch) => ch.id !== id));
+      // Clear default if deleted channel was the default
+      if (defaultChannelId === id) {
+        setDefaultChannelId(null);
+      }
     } catch (error) {
       console.error('Failed to delete:', error);
+    }
+  };
+
+  const handleSetDefault = async (id: string) => {
+    try {
+      await setDefaultChannel(id);
+      setDefaultChannelId(id);
+    } catch (error) {
+      console.error('Failed to set default:', error);
     }
   };
 
@@ -315,7 +335,12 @@ export default function NotificationsPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg">{channel.name || channel.id}</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      {channel.name || channel.id}
+                      {defaultChannelId === channel.id && (
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      )}
+                    </CardTitle>
                     <CardDescription className="mt-1">{getTypeLabel(channel.type)}</CardDescription>
                   </div>
                   <Badge variant={channel.enabled ? 'success' : 'secondary'}>
@@ -343,6 +368,15 @@ export default function NotificationsPage() {
                       </span>
                     </div>
                     <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSetDefault(channel.id)}
+                        disabled={defaultChannelId === channel.id}
+                        title={t('notifications.setDefault')}
+                      >
+                        <Star className={`h-4 w-4 ${defaultChannelId === channel.id ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
